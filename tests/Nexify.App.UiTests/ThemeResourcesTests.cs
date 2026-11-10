@@ -150,14 +150,14 @@ public class ThemeResourcesTests
         combo.IsDropDownOpen = true;
         combo.IsDropDownOpen = false;
 
-        // The context menu lives in its own popup: open it to instantiate the menu and item templates.
-        menu.PlacementTarget = host;
-        menu.IsOpen = true;
+        // The context menu lives in its own popup; lay it out directly to instantiate the menu and item templates.
+        menu.ApplyTemplate();
+        menu.Measure(new Size(400, 400));
+        menu.Arrange(new Rect(0, 0, 400, 400));
         menu.UpdateLayout();
         Assert.True(menu.Style is not null && menuItem.Style is not null, "context menu styles not applied");
         Assert.True(VisualTreeHelper.GetChildrenCount(menu) > 0, "ContextMenu has no template");
         Assert.True(VisualTreeHelper.GetChildrenCount(menuItem) > 0, "MenuItem has no template");
-        menu.IsOpen = false;
     });
 
     [WindowsOnlyFact]
