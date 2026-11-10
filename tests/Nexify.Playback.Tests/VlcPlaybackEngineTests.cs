@@ -113,8 +113,17 @@ public sealed class VlcPlaybackEngineTests : IDisposable
         // "Position >= 1.3 s" alone would also pass without a working seek, so seek backwards: once past
         // 1.8 s, Seek(1.5 s) must make the position jump back and land at >= 1.3 s. Without the seek the
         // position never decreases.
-        await WaitUntil(() => engine.Position >= TimeSpan.FromSeconds(1.8) || ended.Task.IsCompleted, SeekTimeout,
-            $"Position >= 1.8 s before seeking (was {engine.Position})");
+        var native = Assert.IsType<MediaPlayer>(engine.VideoSurfaceSource);
+        var sampleAt = DateTime.UtcNow;
+        await WaitUntil(() =>
+        {
+            if (DateTime.UtcNow >= sampleAt) // TEMP diagnostics
+            {
+                _output.WriteLine($"DIAG engine {engine.Position} native time {native.Time} pos {native.Position:0.000} state {native.State}");
+                sampleAt = DateTime.UtcNow.AddMilliseconds(250);
+            }
+            return engine.Position >= TimeSpan.FromSeconds(1.8) || ended.Task.IsCompleted;
+        }, SeekTimeout, $"Position >= 1.8 s before seeking (was {engine.Position})");
         Assert.False(ended.Task.IsCompleted, "Ended before the seek could be tested");
         var before = engine.Position;
         engine.Seek(TimeSpan.FromSeconds(1.5));
