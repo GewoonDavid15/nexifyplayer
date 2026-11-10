@@ -55,7 +55,8 @@ Invoke-Ffmpeg 'clip.avi'  ($avIn + @('-c:v', 'mpeg4', '-c:a', 'libmp3lame'))
 Invoke-Ffmpeg 'clip.mov'  ($avIn + @('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac'))
 Invoke-Ffmpeg 'clip.webm' ($avIn + @('-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '40', '-deadline', 'realtime', '-c:a', 'libopus'))
 Invoke-Ffmpeg 'clip.wmv'  ($avIn + @('-c:v', 'wmv2', '-c:a', 'wmav2'))
-Invoke-Ffmpeg 'clip.mpeg' ($avIn + @('-c:v', 'mpeg2video', '-c:a', 'mp2', '-f', 'mpeg'))
+# Short GOP: MPEG-PS seeks land on a keyframe, and the default GOP (12 frames) makes a seek to 1.5 s land near 1.0 s.
+Invoke-Ffmpeg 'clip.mpeg' ($avIn + @('-c:v', 'mpeg2video', '-g', '5', '-c:a', 'mp2', '-f', 'mpeg'))
 
 # Path with characters that need URI escaping
 Copy-Item -LiteralPath (Join-Path $OutDir 'tone.mp3') -Destination (Join-Path $OutDir 'Beyoncé #1 100%.mp3') -Force

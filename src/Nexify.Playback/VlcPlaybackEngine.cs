@@ -484,6 +484,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
     private void SetState(long gen, PlaybackState state)
     {
         if (!IsLatest(gen) || _state == state) return;
+        _log.Debug("State {From} -> {To} (generation {Generation}, position {Position})", _state, state, gen, Position);
         _state = state;
         Raise(() => StateChanged?.Invoke(this, state));
     }
