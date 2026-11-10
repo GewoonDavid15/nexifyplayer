@@ -108,10 +108,19 @@ public sealed class VlcPlaybackEngineTests : IDisposable
         await WaitUntil(() => Math.Abs((engine.Duration - Expected).TotalSeconds) <= 0.5, TimeSpan.FromSeconds(2),
             $"Duration within 0.5 s of 3 s (was {engine.Duration})");
 
+        // With --aout=dummy LibVLC decodes faster than realtime, so seek while paused: the position
+        // can then only reach ~1.5 s through the seek itself.
+        engine.Pause();
+        await WaitUntil(() => engine.State == PlaybackState.Paused || ended.Task.IsCompleted, SeekTimeout, $"State Paused (was {engine.State})");
+        Assert.False(ended.Task.IsCompleted, "Ended before the seek could be tested");
+        var before = engine.Position;
         engine.Seek(TimeSpan.FromSeconds(1.5));
-        await WaitUntil(() => engine.Position >= TimeSpan.FromSeconds(1.3) || ended.Task.IsCompleted, SeekTimeout,
-            $"Position >= 1.3 s after Seek(1.5 s) (was {engine.Position})");
+        await WaitUntil(() => Math.Abs((engine.Position - TimeSpan.FromSeconds(1.5)).TotalSeconds) <= 0.2, SeekTimeout,
+            $"Position near 1.5 s after Seek(1.5 s) while paused (before {before}, now {engine.Position})");
+        Assert.True(engine.Position >= TimeSpan.FromSeconds(1.3));
+        _output.WriteLine($"Position before seek {before}, after {engine.Position}");
 
+        engine.Play();
         await Within(ended.Task, EndTimeout, "EndReached");
         Assert.Equal(PlaybackState.Ended, engine.State);
         Assert.False(failed.Task.IsCompleted, failed.Task.IsCompleted ? $"Unexpected failure: {failed.Task.Result}" : "");
@@ -245,8 +254,10 @@ public sealed class VlcPlaybackEngineTests : IDisposable
         await engine.OpenAsync(Item("tone.mp3"));
         await WaitUntil(() => engine.State == PlaybackState.Playing, PlayingTimeout, "State Playing");
 
-        // The native player only reports a volume once its audio output exists.
-        await WaitUntil(() => player.Volume == 37, TimeSpan.FromSeconds(2), $"native volume 37 (was {player.Volume})");
+        // With --aout=dummy LibVLC cannot report the volume back (reads 0), so check what the engine
+        // pushed into the native player once it was playing.
+        await WaitUntil(() => engine.AppliedVolumeWhilePlaying == 37, TimeSpan.FromSeconds(2),
+            $"volume 37 applied while playing (was {engine.AppliedVolumeWhilePlaying}, native reports {player.Volume})");
         Assert.Equal(37, engine.Volume);
     }
 

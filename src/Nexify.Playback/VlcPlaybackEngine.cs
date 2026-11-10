@@ -88,7 +88,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         {
             var v = Math.Clamp(value, 0, 100);
             Volatile.Write(ref _volume, v);
-            TryPlayer(p => p.Volume = v, "set volume");
+            TryPlayer(p => ApplyVolume(p, v), "set volume");
         }
     }
 
@@ -100,6 +100,16 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
             _muted = value;
             TryPlayer(p => p.Mute = value, "set mute");
         }
+    }
+
+    /// <summary>The volume most recently pushed to the native player, after it started playing
+    /// (for tests: with <c>--aout=dummy</c> LibVLC cannot report its volume back).</summary>
+    internal int? AppliedVolumeWhilePlaying { get; private set; }
+
+    private void ApplyVolume(MediaPlayer player, int volume)
+    {
+        player.Volume = volume;
+        if (_state == PlaybackState.Playing) AppliedVolumeWhilePlaying = volume;
     }
 
     // ---------------------------------------------------------------- initialization
@@ -221,7 +231,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
             _media = media;
 
             Volatile.Write(ref _playerGeneration, gen);
-            player.Volume = Volume;
+            ApplyVolume(player, Volume);
             player.Mute = IsMuted;
 
             // 3. Play.
@@ -392,13 +402,13 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         var gen = CurrentPlayerGeneration;
         Post(gen, () =>
         {
+            SetState(gen, PlaybackState.Playing);
             // Re-apply volume and mute now that the audio output exists (on the thread pool, not the VLC thread).
             RunOnPlayer(gen, p =>
             {
-                p.Volume = Volume;
+                ApplyVolume(p, Volume);
                 p.Mute = IsMuted;
             }, "apply volume");
-            SetState(gen, PlaybackState.Playing);
         });
     }
 

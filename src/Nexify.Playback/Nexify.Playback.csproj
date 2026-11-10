@@ -10,6 +10,9 @@
     <PackageReference Include="Serilog" Version="4.0.2" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Nexify.Playback.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Nexify.Core\Nexify.Core.csproj" />
   </ItemGroup>
 </Project>
