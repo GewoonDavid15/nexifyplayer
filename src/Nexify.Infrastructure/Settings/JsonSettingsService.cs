@@ -76,12 +76,18 @@ public sealed class JsonSettingsService : ISettingsService, IDisposable
         }
     }
 
+    // All state changes, timer changes and file writes happen under _gate, so saves are serialized
+    // and always write the latest value.
     public void Update(Func<AppSettings, AppSettings> change)
     {
-        var updated = Apply(change);
-        _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        lock (_gate) _pending = false;
-        Save(updated);
+        AppSettings updated;
+        lock (_gate)
+        {
+            updated = _current = change(_current).Normalized();
+            _pending = false;
+            _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            Save(updated);
+        }
         Changed?.Invoke(this, updated);
     }
 
@@ -92,29 +98,27 @@ public sealed class JsonSettingsService : ISettingsService, IDisposable
         {
             updated = _current = change(_current).Normalized();
             _pending = true;
+            _timer.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
         }
-        _timer.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
         Changed?.Invoke(this, updated);
     }
 
     public void Flush()
     {
-        AppSettings toSave;
         lock (_gate)
         {
             if (!_pending) return;
             _pending = false;
-            toSave = _current;
+            _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            Save(_current);
         }
-        _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        Save(toSave);
     }
 
-    public void Dispose() => _timer.Dispose();
-
-    private AppSettings Apply(Func<AppSettings, AppSettings> change)
+    /// <summary>Writes any pending change (settings are always saved on exit) and stops the timer.</summary>
+    public void Dispose()
     {
-        lock (_gate) return _current = change(_current).Normalized();
+        Flush();
+        _timer.Dispose();
     }
 
     private void OnTimer(object? state) => Flush();

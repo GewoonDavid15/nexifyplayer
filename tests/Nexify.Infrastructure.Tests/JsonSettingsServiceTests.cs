@@ -176,4 +176,60 @@ public class JsonSettingsServiceTests : IDisposable
         s.Update(c => c with { Volume = 999 });
         Assert.Equal(100, seen?.Volume);
     }
+
+    [Fact]
+    public void UpdateDebounced_ThenUpdate_ThenTimerFires_DiskHoldsLatest()
+    {
+        var time = new FakeTimeProvider();
+        var s = Create(time);
+        s.Load();
+        s.UpdateDebounced(c => c with { Volume = 10 });
+        s.Update(c => c with { Theme = ThemeMode.Light });
+        time.Advance(TimeSpan.FromSeconds(1));
+        var json = File.ReadAllText(_paths.SettingsFile);
+        Assert.Contains("\"volume\": 10", json);
+        Assert.Contains("\"theme\": \"light\"", json);
+        Assert.False(File.Exists(_paths.SettingsFile + ".tmp"));
+    }
+
+    [Fact]
+    public void Update_ThenDebounced_DebouncedStillSaved()
+    {
+        var time = new FakeTimeProvider();
+        var s = Create(time);
+        s.Load();
+        s.Update(c => c with { Theme = ThemeMode.Light });
+        s.UpdateDebounced(c => c with { Volume = 9 });
+        time.Advance(TimeSpan.FromMilliseconds(500));
+        Assert.Contains("\"volume\": 9", File.ReadAllText(_paths.SettingsFile));
+    }
+
+    [Fact]
+    public void Dispose_WithPendingDebounced_WritesIt()
+    {
+        var s = Create(new FakeTimeProvider());
+        s.Load();
+        s.UpdateDebounced(c => c with { Volume = 21 });
+        s.Dispose();
+        Assert.Contains("\"volume\": 21", File.ReadAllText(_paths.SettingsFile));
+    }
+
+    [Fact]
+    public async Task ConcurrentUpdates_DiskMatchesMemory()
+    {
+        var s = Create();
+        s.Load();
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(t => Task.Run(() =>
+        {
+            for (var i = 0; i < 50; i++)
+            {
+                if (i % 2 == 0) s.Update(c => c with { Volume = (t * 50 + i) % 101 });
+                else s.UpdateDebounced(c => c with { Volume = (t * 50 + i) % 101 });
+            }
+        })));
+        s.Flush();
+        var b = Create();
+        b.Load();
+        Assert.Equal(s.Current.Volume, b.Current.Volume);
+    }
 }
