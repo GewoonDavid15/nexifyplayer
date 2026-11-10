@@ -112,7 +112,9 @@ public partial class NowPlayingPage : UserControl
         _dragCandidate = null;
         try
         {
-            DragDrop.DoDragDrop(QueueList, new DataObject(DragFormat, row), DragDropEffects.Move);
+            Serilog.Log.Information("Queue drag started for {Title}", row.Title);
+            var result = DragDrop.DoDragDrop(QueueList, new DataObject(DragFormat, row), DragDropEffects.Move);
+            Serilog.Log.Information("Queue drag ended: {Result}", result);
         }
         finally
         {
@@ -151,6 +153,7 @@ public partial class NowPlayingPage : UserControl
 
         var (insertAt, _) = InsertionPoint(e.GetPosition(QueueList));
         var to = insertAt > from ? insertAt - 1 : insertAt;
+        Serilog.Log.Information("Queue drop at {Point}: move {From} -> {To}", e.GetPosition(QueueList), from, to);
         _player.MoveQueueItem(from, to);
         QueueList.SelectedItem = row;
         e.Handled = true;

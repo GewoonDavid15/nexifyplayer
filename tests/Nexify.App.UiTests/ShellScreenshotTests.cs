@@ -89,7 +89,7 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
             Thread.Sleep(300);
 
             // Drag "City Lights" (row 4) above "Evening Drive" (row 2).
-            session.DragQueueRow(3, 1);
+            session.DragQueueRow(3, 1, dir);
             var order = session.QueueRowNames();
             output.WriteLine("Queue after drag: " + string.Join(", ", order));
             Assert.Equal(["Nexify Demo", "City Lights", "Evening Drive", "Morning Light", "Night Walk"], order);
@@ -336,7 +336,7 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
         }
 
         /// <summary>Drags row <paramref name="from"/> onto the upper half of row <paramref name="to"/> (inserting before it).</summary>
-        public void DragQueueRow(int from, int to)
+        public void DragQueueRow(int from, int to, string? shotDir = null)
         {
             var start = QueueRowCenter(from);
             var rows = QueueRows();
@@ -351,7 +351,16 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
                 Thread.Sleep(40);
             }
 
-            Thread.Sleep(200);
+            // OLE drag and drop only updates the target on movement: jiggle at the target before releasing.
+            for (var i = 0; i < 4; i++)
+            {
+                Mouse.MoveTo(new Point(end.X + (i % 2 == 0 ? 3 : -3), end.Y));
+                Thread.Sleep(60);
+            }
+
+            Mouse.MoveTo(end);
+            Thread.Sleep(250);
+            if (shotDir is not null) Shot(shotDir, "10a-dark-queue-dragging", parkPointer: false);
             Mouse.Up(MouseButton.Left);
             Thread.Sleep(400);
         }
