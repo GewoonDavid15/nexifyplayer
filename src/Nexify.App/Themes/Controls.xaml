@@ -758,8 +758,19 @@
     </Style>
     <!-- ===================================================================== Queue row (Now playing) -->
     <!-- 56 px row, radius 12; hover Bg.SurfaceHover; the playing item (Tag=True) gets Accent.Soft. -->
+    <!-- Keyboard focus ring for full-width rows (inset, radius 12); only shown for keyboard navigation -->
+    <Style x:Key="FocusVisual.Row">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Border CornerRadius="12" BorderThickness="2" BorderBrush="{DynamicResource Accent.Text}" SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="ListBoxItem.Queue" TargetType="ListBoxItem">
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual.Row}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="FontFamily" Value="{DynamicResource Font.Body}" />
         <Setter Property="FontSize" Value="{DynamicResource Size.Body}" />
@@ -777,7 +788,6 @@
                         <Border x:Name="SelectedLayer" Background="{DynamicResource Bg.SurfaceHover}" CornerRadius="12" Opacity="0" />
                         <Border x:Name="HoverLayer" Background="{DynamicResource Bg.SurfaceHover}" CornerRadius="12" Opacity="0" />
                         <Border x:Name="ActiveLayer" Background="{DynamicResource Accent.Soft}" CornerRadius="12" Opacity="0" />
-                        <Border x:Name="FocusRing" BorderBrush="{DynamicResource Accent.Text}" BorderThickness="1.5" CornerRadius="12" Opacity="0" />
                         <ContentPresenter Margin="{TemplateBinding Padding}"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
@@ -808,9 +818,6 @@
                             </Trigger.Value>
                             <Setter Property="Foreground" Value="{DynamicResource Text.Primary}" />
                             <Setter TargetName="ActiveLayer" Property="Opacity" Value="1" />
-                        </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="FocusRing" Property="Opacity" Value="1" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

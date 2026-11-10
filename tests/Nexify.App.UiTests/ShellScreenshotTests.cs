@@ -335,33 +335,36 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
             Thread.Sleep(300);
         }
 
-        /// <summary>Drags row <paramref name="from"/> onto the upper half of row <paramref name="to"/> (inserting before it).</summary>
+        /// <summary>
+        /// Drags row <paramref name="from"/> onto the upper half of row <paramref name="to"/> (inserting before it).
+        /// Uses SendInput for every step: OLE drag and drop (WPF DoDragDrop) cancels on the cursor jumps of SetCursorPos.
+        /// </summary>
         public void DragQueueRow(int from, int to, string? shotDir = null)
         {
             var start = QueueRowCenter(from);
-            var rows = QueueRows();
-            var target = rows[to].BoundingRectangle;
+            var target = QueueRows()[to].BoundingRectangle;
             var end = new Point(target.Left + target.Width / 2, target.Top + target.Height / 4);
-            Mouse.MoveTo(start);
+            Input.Move(start);
             Thread.Sleep(200);
-            Mouse.Down(MouseButton.Left);
-            for (var i = 1; i <= 12; i++)
+            Input.Button(down: true);
+            Thread.Sleep(100);
+            const int steps = 20;
+            for (var i = 1; i <= steps; i++)
             {
-                Mouse.MoveTo(new Point(start.X, start.Y + (end.Y - start.Y) * i / 12));
-                Thread.Sleep(40);
+                Input.Move(new Point(start.X, start.Y + (end.Y - start.Y) * i / steps));
+                Thread.Sleep(30);
             }
 
-            // OLE drag and drop only updates the target on movement: jiggle at the target before releasing.
             for (var i = 0; i < 4; i++)
             {
-                Mouse.MoveTo(new Point(end.X + (i % 2 == 0 ? 3 : -3), end.Y));
-                Thread.Sleep(60);
+                Input.Move(new Point(end.X + (i % 2 == 0 ? 2 : -2), end.Y));
+                Thread.Sleep(50);
             }
 
-            Mouse.MoveTo(end);
+            Input.Move(end);
             Thread.Sleep(250);
             if (shotDir is not null) Shot(shotDir, "10a-dark-queue-dragging", parkPointer: false);
-            Mouse.Up(MouseButton.Left);
+            Input.Button(down: false);
             Thread.Sleep(400);
         }
 
@@ -434,5 +437,54 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
                 }
             }
         }
+    }
+
+    /// <summary>Raw mouse input through SendInput (absolute moves, left button).</summary>
+    private static class Input
+    {
+        private const uint InputMouse = 0;
+        private const uint MouseMove = 0x0001, LeftDown = 0x0002, LeftUp = 0x0004, Absolute = 0x8000, VirtualDesk = 0x4000;
+
+        public static void Move(Point p)
+        {
+            // Absolute coordinates are normalised to 0..65535 over the virtual desktop.
+            int vx = GetSystemMetrics(76), vy = GetSystemMetrics(77), vw = GetSystemMetrics(78), vh = GetSystemMetrics(79);
+            var nx = (int)Math.Round((p.X - vx) * 65535.0 / Math.Max(1, vw - 1));
+            var ny = (int)Math.Round((p.Y - vy) * 65535.0 / Math.Max(1, vh - 1));
+            Send(MouseMove | Absolute | VirtualDesk, nx, ny);
+        }
+
+        public static void Button(bool down) => Send(down ? LeftDown : LeftUp, 0, 0);
+
+        private static void Send(uint flags, int x, int y)
+        {
+            var input = new INPUT { Type = InputMouse, Mouse = new MOUSEINPUT { Dx = x, Dy = y, Flags = flags } };
+            if (SendInput(1, [input], Marshal.SizeOf<INPUT>()) != 1)
+                throw new InvalidOperationException($"SendInput failed ({Marshal.GetLastWin32Error()})");
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MOUSEINPUT
+        {
+            public int Dx;
+            public int Dy;
+            public uint MouseData;
+            public uint Flags;
+            public uint Time;
+            public IntPtr ExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INPUT
+        {
+            public uint Type;
+            public MOUSEINPUT Mouse;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint count, INPUT[] inputs, int size);
+
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int index);
     }
 }
