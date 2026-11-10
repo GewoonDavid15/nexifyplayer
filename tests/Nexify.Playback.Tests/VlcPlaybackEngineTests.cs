@@ -165,11 +165,13 @@ public sealed class VlcPlaybackEngineTests : IDisposable
         Assert.Equal(PlaybackErrorReason.FileNotFound, (await Within(failed.Task, TimeSpan.FromSeconds(2), "PlaybackFailed")).Reason);
     }
 
-    [WindowsFact]
-    public async Task Plays_PathWithSpecialCharacters()
+    [WindowsTheory]
+    [InlineData("Beyoncé #1 100%.mp3")]
+    [InlineData("tone %41.mp3")] // must not be read as "tone A.mp3"
+    public async Task Plays_PathWithSpecialCharacters(string file)
     {
         var engine = await ReadyEngine();
-        var item = Item("Beyoncé #1 100%.mp3");
+        var item = Item(file);
         var playing = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var failed = new TaskCompletionSource<PlaybackError>(TaskCreationOptions.RunContinuationsAsynchronously);
         engine.StateChanged += (_, s) => { if (s == PlaybackState.Playing) playing.TrySetResult(true); };

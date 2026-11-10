@@ -59,6 +59,7 @@ Invoke-Ffmpeg 'clip.mpeg' ($avIn + @('-c:v', 'mpeg2video', '-c:a', 'mp2', '-f', 
 
 # Path with characters that need URI escaping
 Copy-Item -LiteralPath (Join-Path $OutDir 'tone.mp3') -Destination (Join-Path $OutDir 'Beyoncé #1 100%.mp3') -Force
+Copy-Item -LiteralPath (Join-Path $OutDir 'tone.mp3') -Destination (Join-Path $OutDir 'tone %41.mp3') -Force
 
 # 64 KB of random bytes with a video extension
 $bytes = New-Object byte[] 65536
