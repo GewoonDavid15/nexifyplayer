@@ -112,17 +112,7 @@ public partial class NowPlayingPage : UserControl
         _dragCandidate = null;
         try
         {
-            Serilog.Log.Information("Queue drag started for {Title} (captured: {Captured})", row.Title, Mouse.Captured);
-            var calls = 0;
-            QueryContinueDragEventHandler probe = (_, args) =>
-            {
-                if (calls++ < 3 || args.Action != DragAction.Continue)
-                    Serilog.Log.Information("QueryContinueDrag keys {Keys} escape {Escape} action {Action}", args.KeyStates, args.EscapePressed, args.Action);
-            };
-            QueueList.QueryContinueDrag += probe;
-            var result = DragDrop.DoDragDrop(QueueList, new DataObject(DragFormat, row), DragDropEffects.Move);
-            QueueList.QueryContinueDrag -= probe;
-            Serilog.Log.Information("Queue drag ended: {Result}", result);
+            DragDrop.DoDragDrop(QueueList, new DataObject(DragFormat, row), DragDropEffects.Move);
         }
         finally
         {
@@ -161,7 +151,6 @@ public partial class NowPlayingPage : UserControl
 
         var (insertAt, _) = InsertionPoint(e.GetPosition(QueueList));
         var to = insertAt > from ? insertAt - 1 : insertAt;
-        Serilog.Log.Information("Queue drop at {Point}: move {From} -> {To}", e.GetPosition(QueueList), from, to);
         _player.MoveQueueItem(from, to);
         QueueList.SelectedItem = row;
         e.Handled = true;

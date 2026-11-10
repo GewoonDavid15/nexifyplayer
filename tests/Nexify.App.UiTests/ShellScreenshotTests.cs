@@ -85,7 +85,7 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
 
             session.RightClickQueueRow(2);
             session.Shot(dir, "10-dark-queue-contextmenu", parkPointer: false);
-            Keyboard.Press(FlaUI.Core.WindowsAPI.VirtualKeyShort.ESCAPE);
+            Keyboard.Type(FlaUI.Core.WindowsAPI.VirtualKeyShort.ESCAPE); // Type = down + up (Press leaves it held)
             Thread.Sleep(300);
 
             // Drag "City Lights" (row 4) above "Evening Drive" (row 2).
