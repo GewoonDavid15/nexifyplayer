@@ -20,6 +20,7 @@ public sealed class VlcPlaybackEngineTests : IDisposable
     private readonly ITestOutputHelper _output;
     private readonly Logger _log;
     private readonly List<VlcPlaybackEngine> _engines = [];
+    private readonly List<AudioPacer> _pacers = []; // keeps the native callbacks alive
 
     public VlcPlaybackEngineTests(ITestOutputHelper output)
     {
@@ -97,6 +98,7 @@ public sealed class VlcPlaybackEngineTests : IDisposable
         engine.StateChanged += (_, s) => { if (s == PlaybackState.Playing) playing.TrySetResult(true); };
         engine.EndReached += (_, _) => ended.TrySetResult(true);
         engine.PlaybackFailed += (_, e) => failed.TrySetResult(e);
+        _pacers.Add(AudioPacer.Attach(Assert.IsType<MediaPlayer>(engine.VideoSurfaceSource)));
 
         await engine.OpenAsync(item);
         var first = await Task.WhenAny(playing.Task, failed.Task, Task.Delay(PlayingTimeout));
@@ -108,9 +110,9 @@ public sealed class VlcPlaybackEngineTests : IDisposable
         await WaitUntil(() => Math.Abs((engine.Duration - Expected).TotalSeconds) <= 0.5, TimeSpan.FromSeconds(2),
             $"Duration within 0.5 s of 3 s (was {engine.Duration})");
 
-        // With --aout=dummy LibVLC plays faster than realtime, so "position >= 1.3 s" alone would also pass
-        // without a working seek. Seek backwards instead: once past 1.8 s, Seek(1.5 s) must make the
-        // position jump back, and land at >= 1.3 s. Without the seek the position never decreases.
+        // "Position >= 1.3 s" alone would also pass without a working seek, so seek backwards: once past
+        // 1.8 s, Seek(1.5 s) must make the position jump back and land at >= 1.3 s. Without the seek the
+        // position never decreases.
         await WaitUntil(() => engine.Position >= TimeSpan.FromSeconds(1.8) || ended.Task.IsCompleted, SeekTimeout,
             $"Position >= 1.8 s before seeking (was {engine.Position})");
         Assert.False(ended.Task.IsCompleted, "Ended before the seek could be tested");
@@ -297,6 +299,47 @@ public sealed class VlcPlaybackEngineTests : IDisposable
 
         if (!engine.IsReady)
             Assert.Equal(PlaybackErrorReason.EngineUnavailable, (await Within(failed.Task, TimeSpan.FromSeconds(2), "PlaybackFailed")).Reason);
+    }
+
+    /// <summary>
+    /// With --aout=dummy nothing blocks the audio output, so LibVLC demuxes and "plays" an audio file in a
+    /// fraction of its duration and reports no time while doing so (unlike a real sound device). This
+    /// replaces the output with memory callbacks that block for each buffer's duration, like a device does.
+    /// The engine under test is unchanged; only the native player's audio sink is swapped.
+    /// </summary>
+    private sealed class AudioPacer
+    {
+        private const uint Rate = 48000;
+        private readonly System.Diagnostics.Stopwatch _clock = new();
+        private readonly MediaPlayer.LibVLCAudioPlayCb _play;
+        private readonly MediaPlayer.LibVLCAudioPauseCb _pause;
+        private readonly MediaPlayer.LibVLCAudioResumeCb _resume;
+        private readonly MediaPlayer.LibVLCAudioFlushCb _flush;
+        private readonly MediaPlayer.LibVLCAudioDrainCb _drain;
+        private long _samples;
+
+        private AudioPacer()
+        {
+            _play = (_, _, count, _) =>
+            {
+                if (!_clock.IsRunning && _samples == 0) _clock.Start();
+                _samples += count;
+                var ahead = TimeSpan.FromSeconds(_samples / (double)Rate) - _clock.Elapsed;
+                if (ahead > TimeSpan.Zero) Thread.Sleep(ahead);
+            };
+            _pause = (_, _) => _clock.Stop();
+            _resume = (_, _) => _clock.Start();
+            _flush = (_, _) => { _samples = 0; _clock.Reset(); };
+            _drain = _ => { };
+        }
+
+        public static AudioPacer Attach(MediaPlayer player)
+        {
+            var pacer = new AudioPacer();
+            player.SetAudioFormat("S16N", Rate, 2);
+            player.SetAudioCallbacks(pacer._play, pacer._pause, pacer._resume, pacer._flush, pacer._drain);
+            return pacer;
+        }
     }
 
     private sealed class OutputSink(ITestOutputHelper output) : ILogEventSink
