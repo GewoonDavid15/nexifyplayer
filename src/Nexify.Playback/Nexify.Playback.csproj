@@ -4,9 +4,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp.WPF" Version="3.9.4" />
+    <PackageReference Include="LibVLCSharp" Version="3.9.4" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240627000" ExcludeAssets="all" PrivateAssets="all" />
+    <PackageReference Include="Serilog" Version="4.0.2" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Nexify.Core\Nexify.Core.csproj" />
