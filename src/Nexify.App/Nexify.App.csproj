@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>NexifyPlayer</AssemblyName>
+    <RootNamespace>Nexify.App</RootNamespace>
+    <StartupObject>Nexify.App.Program</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.9.4" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240627000" ExcludeAssets="all" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Nexify.Core\Nexify.Core.csproj" />
+    <ProjectReference Include="..\Nexify.Infrastructure\Nexify.Infrastructure.csproj" />
+    <ProjectReference Include="..\Nexify.Playback\Nexify.Playback.csproj" />
+    <ProjectReference Include="..\Nexify.Presentation\Nexify.Presentation.csproj" />
+  </ItemGroup>
+</Project>
