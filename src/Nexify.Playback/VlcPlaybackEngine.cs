@@ -350,7 +350,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         if (duration > TimeSpan.Zero) ms = Math.Min(ms, (long)duration.TotalMilliseconds);
         TryPlayer(p =>
         {
-            if (_media is not null && p.IsSeekable) p.Time = ms;
+            if (_media is not null) p.Time = ms;
         }, "seek");
     }
 
