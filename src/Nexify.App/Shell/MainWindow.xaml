@@ -1,0 +1,54 @@
+<Window x:Class="Nexify.App.Shell.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:Nexify.App.Localization"
+        xmlns:shell="clr-namespace:Nexify.App.Shell"
+        Title="{loc:T app.title}"
+        AutomationProperties.AutomationId="MainWindow"
+        Icon="pack://application:,,,/Assets/nexify.ico"
+        Width="1280" Height="800" MinWidth="720" MinHeight="480"
+        ResizeMode="CanResize"
+        Background="{DynamicResource Bg.Base}"
+        Foreground="{DynamicResource Text.Body}"
+        FontFamily="{DynamicResource Font.Body}"
+        FontSize="{DynamicResource Size.Body}"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Ideal">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <!-- Root gets a margin while maximized to compensate for the WindowChrome overhang. -->
+    <Grid x:Name="Root">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="88" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- subtle lime glow top-left (spec 3.2; token Bg.Glow: centre 10% / -10%, #0FC6F432 to transparent, none in Light) -->
+        <Border Grid.RowSpan="3" Grid.ColumnSpan="2" IsHitTestVisible="False" Background="{DynamicResource Bg.Glow}" />
+
+        <shell:Sidebar x:Name="SidebarPanel" Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" />
+
+        <shell:TitleBar x:Name="TitleBarPanel" Grid.Row="0" Grid.Column="1" />
+
+        <!-- Page area: switched with a 150 ms fade + 8 px slide -->
+        <ContentControl x:Name="PageHost" Grid.Row="1" Grid.Column="1" Focusable="False"
+                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+            <ContentControl.RenderTransform>
+                <TranslateTransform x:Name="PageTranslate" />
+            </ContentControl.RenderTransform>
+        </ContentControl>
+
+        <!-- Transport bar row (88 px, spec 3.4). Task 12 replaces this placeholder with the TransportBar. -->
+        <Border x:Name="TransportHost" Grid.Row="2" Grid.ColumnSpan="2"
+                Background="{DynamicResource Bg.Surface}"
+                BorderBrush="{DynamicResource Border.Subtle}" BorderThickness="0,1,0,0" />
+    </Grid>
+</Window>

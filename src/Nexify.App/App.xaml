@@ -1,0 +1,40 @@
+<Application x:Class="Nexify.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnMainWindowClose">
+    <!-- Built as a Page (ruling R2): Program.Main is the entry point and calls InitializeComponent + Run. -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- ThemeService replaces the token dictionary in place (dark/light). -->
+                <ResourceDictionary Source="Themes/Tokens.Dark.xaml" />
+                <ResourceDictionary Source="Themes/Typography.xaml" />
+                <ResourceDictionary Source="Themes/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- App-wide tooltip in the house style: surface card, subtle border, radius 8. -->
+            <Style TargetType="ToolTip">
+                <Setter Property="OverridesDefaultStyle" Value="True" />
+                <Setter Property="HasDropShadow" Value="False" />
+                <Setter Property="FontFamily" Value="{DynamicResource Font.Body}" />
+                <Setter Property="FontSize" Value="{DynamicResource Size.Caption}" />
+                <Setter Property="FontWeight" Value="Medium" />
+                <Setter Property="Foreground" Value="{DynamicResource Text.Primary}" />
+                <Setter Property="Background" Value="{DynamicResource Bg.Surface}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Border.Subtle}" />
+                <Setter Property="Padding" Value="10,6" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToolTip">
+                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

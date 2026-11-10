@@ -24,8 +24,8 @@
     <SolidColorBrush x:Key="Status.Success" Color="#34D399" />
     <SolidColorBrush x:Key="Status.Error" Color="#F87171" />
 
-    <!-- Window background overlay: subtle radial lime glow top-left (#C6F432 6%), spec 3.2. -->
-    <RadialGradientBrush x:Key="Bg.Glow" Center="0,0" GradientOrigin="0,0" RadiusX="0.9" RadiusY="0.9">
+    <!-- Window background overlay: subtle radial lime glow top-left (#C6F432 6%), spec 3.2; centre 10% / -10%. -->
+    <RadialGradientBrush x:Key="Bg.Glow" Center="0.1,-0.1" GradientOrigin="0.1,-0.1" RadiusX="0.75" RadiusY="0.9">
         <GradientStop Offset="0" Color="#0FC6F432" />
         <GradientStop Offset="1" Color="#00C6F432" />
     </RadialGradientBrush>

@@ -19,6 +19,23 @@ jobs:
       - run: dotnet test tests/Nexify.Presentation.Tests -c Release --no-build
       - name: WPF theme resource tests
         run: dotnet test tests/Nexify.App.UiTests -c Release --no-build --filter "FullyQualifiedName~ThemeResourcesTests"
+      - name: Set display resolution (for shell screenshots)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Set-DisplayResolution -Width 1920 -Height 1080 -Force
+          Get-CimInstance Win32_VideoController | Format-Table Name, CurrentHorizontalResolution, CurrentVerticalResolution
+      - name: Shell screenshots and title-bar checks
+        env:
+          NEXIFY_SCREENSHOT_DIR: ${{ runner.temp }}\screenshots
+        run: dotnet test tests/Nexify.App.UiTests -c Release --no-build --filter "FullyQualifiedName~ShellScreenshotTests" --logger "console;verbosity=detailed"
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: ${{ runner.temp }}\screenshots
+          if-no-files-found: warn
       - name: Install ffmpeg
         run: choco install ffmpeg -y --no-progress
       - name: Generate test media

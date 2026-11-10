@@ -1,6 +1,9 @@
 {
   "language.name": "Nederlands",
   "app.title": "Nexify Player",
+  "window.minimize": "Minimaliseren",
+  "window.maximize": "Maximaliseren",
+  "window.restore": "Vorige grootte",
   "nav.home": "Home",
   "nav.nowPlaying": "Nu speelt",
   "nav.settings": "Instellingen",

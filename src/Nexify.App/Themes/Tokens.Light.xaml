@@ -25,7 +25,7 @@
     <SolidColorBrush x:Key="Status.Error" Color="#DC2626" />
 
     <!-- Window background overlay: no glow in the light theme (fully transparent). -->
-    <RadialGradientBrush x:Key="Bg.Glow" Center="0,0" GradientOrigin="0,0" RadiusX="0.9" RadiusY="0.9">
+    <RadialGradientBrush x:Key="Bg.Glow" Center="0.1,-0.1" GradientOrigin="0.1,-0.1" RadiusX="0.75" RadiusY="0.9">
         <GradientStop Offset="0" Color="#00C6F432" />
         <GradientStop Offset="1" Color="#00C6F432" />
     </RadialGradientBrush>

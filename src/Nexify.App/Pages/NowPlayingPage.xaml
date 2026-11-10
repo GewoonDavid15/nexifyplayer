@@ -1,0 +1,10 @@
+<UserControl x:Class="Nexify.App.Pages.NowPlayingPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:Nexify.App.Localization"
+             AutomationProperties.AutomationId="Page.NowPlaying">
+    <!-- Placeholder: only the page title for now; filled in by Task 12/13. -->
+    <Grid Margin="32,20,32,24">
+        <TextBlock Style="{StaticResource TextBlock.Display}" Text="{loc:T nav.nowPlaying}" VerticalAlignment="Top" />
+    </Grid>
+</UserControl>

@@ -6,6 +6,8 @@
     <AssemblyName>NexifyPlayer</AssemblyName>
     <RootNamespace>Nexify.App</RootNamespace>
     <StartupObject>Nexify.App.Program</StartupObject>
+    <!-- Ruling R2: App.xaml is a Page; Program.Main is the entry point. -->
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
     <ApplicationIcon>Assets\nexify.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
