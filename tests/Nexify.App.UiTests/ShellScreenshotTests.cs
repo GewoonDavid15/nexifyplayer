@@ -86,6 +86,18 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
             session.RightClickQueueRow(2);
             session.Shot(dir, "10-dark-queue-contextmenu", parkPointer: false);
             Keyboard.Press(FlaUI.Core.WindowsAPI.VirtualKeyShort.ESCAPE);
+            Thread.Sleep(300);
+
+            // Drag "City Lights" (row 4) above "Evening Drive" (row 2).
+            session.DragQueueRow(3, 1);
+            var order = session.QueueRowNames();
+            output.WriteLine("Queue after drag: " + string.Join(", ", order));
+            Assert.Equal(["Nexify Demo", "City Lights", "Evening Drive", "Morning Light", "Night Walk"], order);
+
+            // Double-click plays a row.
+            session.DoubleClickQueueRow(2);
+            session.WaitForPlayback("Evening Drive");
+            session.Shot(dir, "10b-dark-queue-after-drag-and-doubleclick");
         }
 
         using (var session = AppSession.Start(output, theme: "dark", language: "en", width: 1280, height: 800, args: audioQueue))
@@ -291,16 +303,57 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
             Assert.True(playing, $"'{title}' did not start playing");
         }
 
-        public void RightClickQueueRow(int index)
+        private AutomationElement[] QueueRows()
         {
             var list = Window.FindFirstDescendant(cf => cf.ByAutomationId("Queue.List"))
                 ?? throw new InvalidOperationException("Queue.List not found");
-            var rows = list.FindAllChildren(cf => cf.ByControlType(ControlType.ListItem));
+            return list.FindAllChildren(cf => cf.ByControlType(ControlType.ListItem));
+        }
+
+        private Point QueueRowCenter(int index)
+        {
+            var rows = QueueRows();
             Assert.True(rows.Length > index, $"queue has {rows.Length} rows");
-            Mouse.MoveTo(Center(rows[index].BoundingRectangle));
+            return Center(rows[index].BoundingRectangle);
+        }
+
+        public string[] QueueRowNames() => QueueRows().Select(r => r.Name).ToArray();
+
+        public void RightClickQueueRow(int index)
+        {
+            Mouse.MoveTo(QueueRowCenter(index));
             Thread.Sleep(300);
             Mouse.RightClick();
             Thread.Sleep(600);
+        }
+
+        public void DoubleClickQueueRow(int index)
+        {
+            Mouse.MoveTo(QueueRowCenter(index));
+            Thread.Sleep(200);
+            Mouse.DoubleClick();
+            Thread.Sleep(300);
+        }
+
+        /// <summary>Drags row <paramref name="from"/> onto the upper half of row <paramref name="to"/> (inserting before it).</summary>
+        public void DragQueueRow(int from, int to)
+        {
+            var start = QueueRowCenter(from);
+            var rows = QueueRows();
+            var target = rows[to].BoundingRectangle;
+            var end = new Point(target.Left + target.Width / 2, target.Top + target.Height / 4);
+            Mouse.MoveTo(start);
+            Thread.Sleep(200);
+            Mouse.Down(MouseButton.Left);
+            for (var i = 1; i <= 12; i++)
+            {
+                Mouse.MoveTo(new Point(start.X, start.Y + (end.Y - start.Y) * i / 12));
+                Thread.Sleep(40);
+            }
+
+            Thread.Sleep(200);
+            Mouse.Up(MouseButton.Left);
+            Thread.Sleep(400);
         }
 
         public void Hover(string automationId, TimeSpan wait)

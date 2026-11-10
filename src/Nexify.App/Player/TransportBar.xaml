@@ -13,6 +13,8 @@
         <conv:BoolToVisibilityConverter x:Key="Collapsed" Invert="True" />
         <conv:RepeatIsOnConverter x:Key="RepeatIsOn" />
         <conv:VolumeGlyphConverter x:Key="VolumeGlyph" />
+        <conv:AtLeastOneConverter x:Key="AtLeastOne" />
+        <conv:IsPositiveConverter x:Key="IsPositive" />
 
         <!-- grayscale anti-aliasing for icon glyphs (no coloured ClearType fringes on dark backgrounds) -->
         <Style x:Key="TransportIcon" TargetType="ButtonBase" BasedOn="{StaticResource Button.Icon}">
@@ -180,9 +182,10 @@
                     <TextBlock Style="{StaticResource TimeText}" TextAlignment="Right" Margin="0,0,10,0"
                                Text="{Binding PositionText}" AutomationProperties.AutomationId="Transport.Position" />
                     <player:SeekSlider Grid.Column="1" Style="{StaticResource Slider.Nexify}" Minimum="0"
-                                       Maximum="{Binding DurationSeconds}" Position="{Binding PositionSeconds}"
+                                       Maximum="{Binding DurationSeconds, Converter={StaticResource AtLeastOne}}"
+                                       Position="{Binding PositionSeconds}"
                                        SeekCommand="{Binding SeekToCommand}"
-                                       IsEnabled="{Binding HasCurrent}"
+                                       IsEnabled="{Binding DurationSeconds, Converter={StaticResource IsPositive}}"
                                        AutomationProperties.AutomationId="Transport.Seek" />
                     <TextBlock Grid.Column="2" Style="{StaticResource TimeText}" Margin="10,0,0,0"
                                Text="{Binding DurationText}" AutomationProperties.AutomationId="Transport.Duration" />

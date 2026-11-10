@@ -392,13 +392,15 @@
                                               Command="{x:Static Slider.IncreaseLarge}" />
                             </Track.IncreaseRepeatButton>
                             <Track.Thumb>
-                                <Thumb Style="{StaticResource Slider.Thumb}" />
+                                <Thumb x:Name="Thumb" Style="{StaticResource Slider.Thumb}" />
                             </Track.Thumb>
                         </Track>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+                            <!-- e.g. the timeline while nothing is playing: just the empty track -->
+                            <Setter TargetName="Thumb" Property="Visibility" Value="Hidden" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

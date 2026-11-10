@@ -59,3 +59,23 @@ public sealed class NothingPlayingVisibility : IMultiValueConverter
     public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+/// <summary>Timeline maximum: the duration, or 1 while it is unknown, so an empty track shows no fill.</summary>
+public sealed class AtLeastOneConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is double d && d > 1 ? d : 1d;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// <summary>True for a number greater than 0 (the timeline can seek once the duration is known).</summary>
+public sealed class IsPositiveConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is double d && d > 0;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
