@@ -98,6 +98,8 @@ public sealed class VlcPlaybackEngineTests : IDisposable
         engine.StateChanged += (_, s) => { if (s == PlaybackState.Playing) playing.TrySetResult(true); };
         engine.EndReached += (_, _) => ended.TrySetResult(true);
         engine.PlaybackFailed += (_, e) => failed.TrySetResult(e);
+        var lastPositionEvent = TimeSpan.MinValue;
+        engine.PositionChanged += (_, p) => lastPositionEvent = p;
         _pacers.Add(AudioPacer.Attach(Assert.IsType<MediaPlayer>(engine.VideoSurfaceSource)));
 
         await engine.OpenAsync(item);
@@ -136,6 +138,8 @@ public sealed class VlcPlaybackEngineTests : IDisposable
 
         await Within(ended.Task, EndTimeout, "EndReached");
         Assert.Equal(PlaybackState.Ended, engine.State);
+        Assert.Equal(engine.Duration, engine.Position);
+        Assert.Equal(engine.Duration, lastPositionEvent); // timeline shows the end, not the last throttled tick
         Assert.False(failed.Task.IsCompleted, failed.Task.IsCompleted ? $"Unexpected failure: {failed.Task.Result}" : "");
     }
 
@@ -272,6 +276,68 @@ public sealed class VlcPlaybackEngineTests : IDisposable
         await WaitUntil(() => engine.AppliedVolumeWhilePlaying == 37, TimeSpan.FromSeconds(2),
             $"volume 37 applied while playing (was {engine.AppliedVolumeWhilePlaying}, native reports {player.Volume})");
         Assert.Equal(37, engine.Volume);
+    }
+
+    [WindowsFact]
+    public async Task SeekRelative_WhilePaused_UpdatesPositionImmediately()
+    {
+        var engine = await ReadyEngine();
+        var events = new ConcurrentQueue<TimeSpan>();
+        engine.PositionChanged += (_, p) => events.Enqueue(p);
+        await engine.OpenAsync(Item("clip.mp4"));
+        await WaitUntil(() => engine.State == PlaybackState.Playing, PlayingTimeout, "State Playing");
+        engine.Pause();
+        await WaitUntil(() => engine.State == PlaybackState.Paused, SeekTimeout, $"State Paused (was {engine.State})");
+        await Task.Delay(200);
+        var start = engine.Position;
+        Assert.True(start < TimeSpan.FromSeconds(1.5), $"Paused too late (position {start})");
+
+        engine.SeekRelative(TimeSpan.FromSeconds(0.5));
+        engine.SeekRelative(TimeSpan.FromSeconds(0.5));
+
+        var expected = start + TimeSpan.FromSeconds(1);
+        Assert.Equal(expected, engine.Position); // no TimeChanged while paused: the engine must update itself
+        await WaitUntil(() => events.Contains(expected), TimeSpan.FromSeconds(2), $"PositionChanged({expected})");
+        await Task.Delay(300);
+        Assert.Equal(PlaybackState.Paused, engine.State);
+        Assert.True((engine.Position - expected).Duration() <= TimeSpan.FromMilliseconds(100),
+            $"Position drifted to {engine.Position} while paused (expected {expected})");
+    }
+
+    [WindowsFact]
+    public async Task Stop_ResetsPositionToZero()
+    {
+        var engine = await ReadyEngine();
+        var last = TimeSpan.MinValue;
+        engine.PositionChanged += (_, p) => last = p;
+        await engine.OpenAsync(Item("clip.mp4"));
+        await WaitUntil(() => engine.Position >= TimeSpan.FromSeconds(0.5), PlayingTimeout, $"Position >= 0.5 s (was {engine.Position})");
+
+        engine.Stop();
+
+        await WaitUntil(() => engine.State == PlaybackState.Stopped, SeekTimeout, $"State Stopped (was {engine.State})");
+        await WaitUntil(() => last == TimeSpan.Zero, TimeSpan.FromSeconds(2), $"PositionChanged(0) (last {last})");
+        Assert.Equal(TimeSpan.Zero, engine.Position);
+    }
+
+    [WindowsTheory]
+    [InlineData("tone.ogg")] // LibVLC's Ogg time bug: the first TimeChanged(0) after a replay must not be ignored
+    [InlineData("tone.mp3")]
+    public async Task Replay_AfterEnded_StartsFromBeginning(string file)
+    {
+        var engine = await ReadyEngine();
+        _pacers.Add(AudioPacer.Attach(Assert.IsType<MediaPlayer>(engine.VideoSurfaceSource)));
+        var ended = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        engine.EndReached += (_, _) => ended.TrySetResult(true);
+        await engine.OpenAsync(Item(file));
+        await Within(ended.Task, TimeSpan.FromSeconds(10), "EndReached");
+        Assert.Equal(engine.Duration, engine.Position);
+
+        engine.Play();
+
+        await WaitUntil(() => engine.State == PlaybackState.Playing, PlayingTimeout, $"State Playing (was {engine.State})");
+        await WaitUntil(() => engine.Position > TimeSpan.FromSeconds(0.2) && engine.Position < TimeSpan.FromSeconds(1.5),
+            TimeSpan.FromSeconds(3), $"Position between 0.2 and 1.5 s after replay (was {engine.Position})");
     }
 
     [WindowsFact]

@@ -344,7 +344,12 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         {
             if (_media is null) return;
             if (_state == PlaybackState.Paused) p.SetPause(false);
-            else if (_state != PlaybackState.Playing) p.Play();
+            else if (_state != PlaybackState.Playing)
+            {
+                // Replay after Ended/Stopped starts from the beginning.
+                ResetPosition(gen);
+                p.Play();
+            }
         }, "play");
     }
 
@@ -371,6 +376,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
             if (_media is null) return;
             p.Stop();
             SetState(gen, PlaybackState.Stopped);
+            ResetPosition(gen);
         }, "stop");
     }
 
@@ -379,10 +385,32 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         var duration = Duration;
         var ms = (long)Math.Max(0, position.TotalMilliseconds);
         if (duration > TimeSpan.Zero) ms = Math.Min(ms, (long)duration.TotalMilliseconds);
+        var gen = Volatile.Read(ref _openGeneration);
+        var applied = false;
         TryPlayer(p =>
         {
-            if (_media is not null) p.Time = ms;
+            if (_media is null) return;
+            p.Time = ms;
+            applied = true;
         }, "seek");
+        if (!applied || !IsLatest(gen)) return;
+
+        // LibVLC reports no time while paused, so publish the target right away (unthrottled). Mark the time
+        // reliable and align the fraction so the Ogg workaround neither ignores nor overrides what follows.
+        Interlocked.Exchange(ref _positionMs, ms);
+        var durationMs = Interlocked.Read(ref _durationMs);
+        Volatile.Write(ref _lastFraction, durationMs > 0 ? (float)ms / durationMs : 0f);
+        Volatile.Write(ref _timeReliable, true);
+        Post(gen, () => PositionChanged?.Invoke(this, Position));
+    }
+
+    /// <summary>Position back to 0 (stop, replay), with the Ogg-workaround state reset.</summary>
+    private void ResetPosition(long gen)
+    {
+        Interlocked.Exchange(ref _positionMs, 0);
+        Volatile.Write(ref _lastFraction, 0f);
+        Volatile.Write(ref _timeReliable, false);
+        Post(gen, () => PositionChanged?.Invoke(this, TimeSpan.Zero));
     }
 
     public void SeekRelative(TimeSpan delta) => Seek(Position + delta);
@@ -474,7 +502,11 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
                 return;
             }
             var duration = Interlocked.Read(ref _durationMs);
-            if (duration > 0) Interlocked.Exchange(ref _positionMs, duration);
+            if (duration > 0)
+            {
+                Interlocked.Exchange(ref _positionMs, duration);
+                PositionChanged?.Invoke(this, TimeSpan.FromMilliseconds(duration));
+            }
             SetState(gen, PlaybackState.Ended);
             EndReached?.Invoke(this, EventArgs.Empty);
         });
@@ -613,6 +645,13 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         var cleanup = Task.Run(() =>
         {
             var gotGate = _gate.Wait(DisposeTimeout);
+            if (!gotGate)
+            {
+                // Another thread may still be using the player: leak the native objects rather than
+                // disposing them underneath it.
+                _log.Warning("Playback engine busy for {Timeout} during Dispose; LibVLC objects are not released", DisposeTimeout);
+                return;
+            }
             try
             {
                 if (player is not null)
@@ -637,7 +676,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
             }
             finally
             {
-                if (gotGate) _gate.Release();
+                _gate.Release();
             }
         });
 
