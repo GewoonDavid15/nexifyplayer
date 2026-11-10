@@ -55,6 +55,8 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
     private long _durationMs;
     private long _lastPositionEventTicks;
     private bool _sawTime;
+    private bool _timeReliable;
+    private float _lastFraction;
     private int _volume = 100;
     private volatile bool _muted;
 
@@ -134,6 +136,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
             player.EndReached += OnVlcEndReached;
             player.EncounteredError += OnVlcError;
             player.TimeChanged += OnVlcTimeChanged;
+            player.PositionChanged += OnVlcPositionChanged;
             player.LengthChanged += OnVlcLengthChanged;
 
             lock (_initLock)
@@ -187,6 +190,8 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         Interlocked.Exchange(ref _positionMs, 0);
         Interlocked.Exchange(ref _durationMs, 0);
         Volatile.Write(ref _sawTime, false);
+        Volatile.Write(ref _timeReliable, false);
+        Volatile.Write(ref _lastFraction, 0f);
         SetState(gen, PlaybackState.Opening);
         Raise(() =>
         {
@@ -460,8 +465,37 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
     {
         var gen = CurrentPlayerGeneration;
         if (!IsLatest(gen)) return;
-        Interlocked.Exchange(ref _positionMs, Math.Max(0, e.Time));
-        if (e.Time > 0) Volatile.Write(ref _sawTime, true);
+        var time = Math.Max(0, e.Time);
+        if (time > 0)
+        {
+            Volatile.Write(ref _sawTime, true);
+            Volatile.Write(ref _timeReliable, true);
+        }
+        else if (Volatile.Read(ref _lastFraction) > 0.01f)
+        {
+            // LibVLC 3.0.21 (seen with Ogg/Vorbis) can report time 0 mid-stream while the position
+            // fraction keeps advancing. Ignore it and derive the position from the fraction instead.
+            Volatile.Write(ref _timeReliable, false);
+            return;
+        }
+        UpdatePosition(gen, time);
+    }
+
+    private void OnVlcPositionChanged(object? sender, MediaPlayerPositionChangedEventArgs e)
+    {
+        var gen = CurrentPlayerGeneration;
+        if (!IsLatest(gen)) return;
+        var fraction = Math.Clamp(e.Position, 0f, 1f);
+        Volatile.Write(ref _lastFraction, fraction);
+        var duration = Interlocked.Read(ref _durationMs);
+        if (Volatile.Read(ref _timeReliable) || duration <= 0 || fraction <= 0) return;
+        Volatile.Write(ref _sawTime, true);
+        UpdatePosition(gen, (long)(fraction * duration));
+    }
+
+    private void UpdatePosition(long gen, long ms)
+    {
+        Interlocked.Exchange(ref _positionMs, ms);
 
         // Throttle PositionChanged to ~4 per second.
         var now = Environment.TickCount64;
@@ -564,6 +598,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
                     player.EndReached -= OnVlcEndReached;
                     player.EncounteredError -= OnVlcError;
                     player.TimeChanged -= OnVlcTimeChanged;
+                    player.PositionChanged -= OnVlcPositionChanged;
                     player.LengthChanged -= OnVlcLengthChanged;
                     player.Stop();
                     player.Dispose();
