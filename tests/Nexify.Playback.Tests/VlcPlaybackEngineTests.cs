@@ -275,6 +275,34 @@ public sealed class VlcPlaybackEngineTests : IDisposable
     }
 
     [WindowsFact]
+    public async Task Metadata_IsReadWhilePlaying()
+    {
+        var engine = await ReadyEngine();
+        var metadata = 0;
+        engine.MetadataChanged += (_, _) => Interlocked.Increment(ref metadata);
+
+        await engine.OpenAsync(Item("tone.mp3"));
+        await WaitUntil(() => engine.CurrentTitle is not null && engine.CurrentArtist is not null, PlayingTimeout,
+            $"title and artist (title {engine.CurrentTitle ?? "null"}, artist {engine.CurrentArtist ?? "null"})");
+
+        Assert.Equal("Nexify Tone", engine.CurrentTitle);
+        Assert.Equal("Nexify Test", engine.CurrentArtist);
+        Assert.True(Volatile.Read(ref metadata) > 0);
+    }
+
+    [WindowsFact]
+    public async Task Metadata_WithoutTags_IsNull()
+    {
+        var engine = await ReadyEngine();
+        await engine.OpenAsync(Item("tone.wav"));
+        await WaitUntil(() => engine.State == PlaybackState.Playing, PlayingTimeout, "State Playing");
+        await Task.Delay(300);
+
+        Assert.Null(engine.CurrentTitle); // LibVLC reports the file name as title; the engine filters that out
+        Assert.Null(engine.CurrentArtist);
+    }
+
+    [WindowsFact]
     public async Task Dispose_WhilePlaying_DoesNotHang()
     {
         var engine = new VlcPlaybackEngine(_log, ["--aout=dummy", "--vout=dummy"]);

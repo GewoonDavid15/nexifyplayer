@@ -40,7 +40,7 @@ $audioIn = @('-f', 'lavfi', '-i', $tone)
 $avIn = @('-f', 'lavfi', '-i', $video, '-f', 'lavfi', '-i', $tone, '-t', "$duration")
 
 # Audio
-Invoke-Ffmpeg 'tone.mp3'      ($audioIn + @('-c:a', 'libmp3lame', '-b:a', '128k'))
+Invoke-Ffmpeg 'tone.mp3'      ($audioIn + @('-c:a', 'libmp3lame', '-b:a', '128k', '-metadata', 'title=Nexify Tone', '-metadata', 'artist=Nexify Test'))
 Invoke-Ffmpeg 'tone.wav'      ($audioIn + @('-c:a', 'pcm_s16le'))
 Invoke-Ffmpeg 'tone.flac'     ($audioIn + @('-c:a', 'flac'))
 Invoke-Ffmpeg 'tone.ogg'      ($audioIn + @('-c:a', 'libvorbis'))

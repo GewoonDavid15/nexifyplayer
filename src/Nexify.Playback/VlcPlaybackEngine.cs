@@ -39,6 +39,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
     private LibVLC? _libVlc;
     private MediaPlayer? _player;
     private Media? _media;
+    private Action? _detachMedia;
 
     // Generation of the most recent OpenAsync call (also bumped by Dispose).
     private long _openGeneration;
@@ -225,15 +226,21 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
 
             // 2. The URI escapes '#', '%', spaces and non-ASCII characters (see FileUri for why not new Uri(path)).
             var media = new Media(_libVlc, FileUri.FromPath(item.Path));
-            media.ParsedChanged += (_, _) => Post(gen, () => ReadMetadata(gen, media));
-            media.MetaChanged += (_, e) =>
+            // Metadata comes from the playing input (MetaChanged) and, if LibVLC reports it, ParsedChanged.
+            // No explicit Media.Parse: a preparse still running while the media is released was a crash risk.
+            EventHandler<MediaParsedChangedEventArgs> onParsed = (_, _) => Post(gen, () => ReadMetadata(gen, media));
+            EventHandler<MediaMetaChangedEventArgs> onMeta = (_, e) =>
             {
                 if (e.MetadataType is MetadataType.Title or MetadataType.Artist) Post(gen, () => ReadMetadata(gen, media));
             };
-            media.Parse(MediaParseOptions.ParseLocal, timeout: 5000)
-                .ContinueWith(t => _log.Debug(t.Exception, "Parsing metadata failed"), CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            media.ParsedChanged += onParsed;
+            media.MetaChanged += onMeta;
             _media = media;
+            _detachMedia = () =>
+            {
+                media.ParsedChanged -= onParsed;
+                media.MetaChanged -= onMeta;
+            };
 
             Volatile.Write(ref _playerGeneration, gen);
             ApplyVolume(player, Volume);
@@ -260,7 +267,6 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
     {
         var old = _media;
         if (old is null || _player is null) return;
-        _media = null;
         try
         {
             _player.Stop();
@@ -269,17 +275,35 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         {
             _log.Warning(ex, "Stopping previous media failed");
         }
-        old.Dispose();
+        ReleaseMedia();
+    }
+
+    /// <summary>Detaches our handlers from the current media, then disposes it. Caller holds <see cref="_gate"/>.</summary>
+    private void ReleaseMedia()
+    {
+        var media = _media;
+        _media = null;
+        try
+        {
+            _detachMedia?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            _log.Debug(ex, "Detaching media events failed");
+        }
+        _detachMedia = null;
+        media?.Dispose();
     }
 
     /// <summary>Reads title/artist under <see cref="_gate"/>, so the media cannot be released meanwhile.</summary>
-    private void ReadMetadata(long gen, Media media) => _ = Task.Run(async () =>
+    private void ReadMetadata(long gen, Media? expected) => _ = Task.Run(async () =>
     {
         string? title = null, artist = null;
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
-            if (!IsLatest(gen) || !ReferenceEquals(_media, media)) return;
+            var media = _media;
+            if (!IsLatest(gen) || media is null || (expected is not null && !ReferenceEquals(media, expected))) return;
             title = Clean(media.Meta(MetadataType.Title));
             artist = Clean(media.Meta(MetadataType.Artist));
         }
@@ -410,6 +434,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         Post(gen, () =>
         {
             SetState(gen, PlaybackState.Playing);
+            ReadMetadata(gen, null);
             // Re-apply volume and mute now that the audio output exists (on the thread pool, not the VLC thread).
             RunOnPlayer(gen, p =>
             {
@@ -603,8 +628,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
                     player.Stop();
                     player.Dispose();
                 }
-                _media?.Dispose();
-                _media = null;
+                ReleaseMedia();
                 libVlc?.Dispose();
             }
             catch (Exception ex)
