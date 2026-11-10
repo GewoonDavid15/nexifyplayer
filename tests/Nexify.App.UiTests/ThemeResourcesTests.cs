@@ -1,4 +1,5 @@
 using System.IO.Packaging;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -21,9 +22,16 @@ public class ThemeResourcesTests
 
     private static Uri Theme(string file) => new($"pack://application:,,,/NexifyPlayer;component/Themes/{file}", UriKind.Absolute);
 
+    /// <summary>Registers pack://application: without creating an Application (its static constructor does it).</summary>
+    private static void EnsurePackScheme()
+    {
+        _ = PackUriHelper.UriSchemePack;
+        RuntimeHelpers.RunClassConstructor(typeof(Application).TypeHandle);
+    }
+
     private static ResourceDictionary Load(string file)
     {
-        _ = PackUriHelper.UriSchemePack; // registers the pack:// scheme without an Application
+        EnsurePackScheme();
         return new ResourceDictionary { Source = Theme(file) };
     }
 
@@ -73,11 +81,10 @@ public class ThemeResourcesTests
     [WindowsOnlyFact]
     public void EmbeddedFonts_ExposeInterAndArchivoFamilies() => Sta.Run(() =>
     {
-        _ = PackUriHelper.UriSchemePack;
+        EnsurePackScheme();
         var families = Fonts.GetFontFamilies(new Uri("pack://application:,,,/NexifyPlayer;component/Assets/Fonts/"))
             .SelectMany(f => f.FamilyNames.Values).ToHashSet();
-        Assert.Contains("Inter", families);
-        Assert.Contains("Archivo", families);
+        Assert.True(families.Contains("Inter") && families.Contains("Archivo"), "Families found: " + string.Join(", ", families));
     });
 
     [WindowsOnlyFact]
