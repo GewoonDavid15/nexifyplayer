@@ -43,8 +43,7 @@ $avIn = @('-f', 'lavfi', '-i', $video, '-f', 'lavfi', '-i', $tone, '-t', "$durat
 Invoke-Ffmpeg 'tone.mp3'      ($audioIn + @('-c:a', 'libmp3lame', '-b:a', '128k'))
 Invoke-Ffmpeg 'tone.wav'      ($audioIn + @('-c:a', 'pcm_s16le'))
 Invoke-Ffmpeg 'tone.flac'     ($audioIn + @('-c:a', 'flac'))
-# 100 ms Ogg pages (default 1 s): diagnosing why LibVLC reports no playback time for this 3 s file.
-Invoke-Ffmpeg 'tone.ogg'      ($audioIn + @('-c:a', 'libvorbis', '-page_duration', '100000'))
+Invoke-Ffmpeg 'tone.ogg'      ($audioIn + @('-c:a', 'libvorbis'))
 Invoke-Ffmpeg 'tone-aac.m4a'  ($audioIn + @('-c:a', 'aac', '-b:a', '128k'))
 Invoke-Ffmpeg 'tone-alac.m4a' ($audioIn + @('-c:a', 'alac'))
 Invoke-Ffmpeg 'tone.wma'      ($audioIn + @('-c:a', 'wmav2', '-b:a', '128k'))
