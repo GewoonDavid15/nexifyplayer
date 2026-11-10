@@ -92,7 +92,7 @@
                     <Image Source="pack://application:,,,/Assets/nexify-mark.png" Width="128" Height="128"
                            RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center">
                         <Image.Effect>
-                            <DropShadowEffect Color="#C6F432" BlurRadius="56" ShadowDepth="0" Opacity="0.35" />
+                            <DropShadowEffect Color="{DynamicResource Accent.GlowColor}" BlurRadius="56" ShadowDepth="0" Opacity="0.35" />
                         </Image.Effect>
                     </Image>
                     <TextBlock Margin="0,28,0,0" Style="{StaticResource TextBlock.Title}" TextAlignment="Center"

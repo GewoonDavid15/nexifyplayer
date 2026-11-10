@@ -20,6 +20,8 @@
     <SolidColorBrush x:Key="Accent.OnAccent" Color="#0A0C10" />
     <SolidColorBrush x:Key="Accent.Text" Color="#5F7A0E" />
     <SolidColorBrush x:Key="Accent.Soft" Color="#40C6F432" />
+    <!-- glow behind the Nexify mark on Now playing (DropShadowEffect takes a Color) -->
+    <Color x:Key="Accent.GlowColor">#A8DB1A</Color>
 
     <SolidColorBrush x:Key="Status.Success" Color="#059669" />
     <SolidColorBrush x:Key="Status.Error" Color="#DC2626" />

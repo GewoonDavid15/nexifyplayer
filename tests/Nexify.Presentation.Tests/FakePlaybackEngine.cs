@@ -93,6 +93,10 @@ public sealed class FakePlaybackEngine : IPlaybackEngine
         PlaybackFailed?.Invoke(this, new PlaybackError(Current, reason, null));
     }
 
+    /// <summary>A failure for a specific (possibly no longer current) item.</summary>
+    public void RaiseFailedFor(MediaItem item, PlaybackErrorReason reason)
+        => PlaybackFailed?.Invoke(this, new PlaybackError(item, reason, null));
+
     public void RaiseMetadata() => MetadataChanged?.Invoke(this, EventArgs.Empty);
 
     public void Dispose()
@@ -103,6 +107,25 @@ public sealed class FakePlaybackEngine : IPlaybackEngine
 public sealed class SyncDispatcher : IUiDispatcher
 {
     public void Post(Action action) => action();
+}
+
+/// <summary>Holds posted actions until <see cref="Flush"/>, to simulate events that wait in the UI queue.</summary>
+public sealed class DeferredDispatcher : IUiDispatcher
+{
+    private readonly Queue<Action> _pending = new();
+    public bool Deferring { get; set; }
+
+    public void Post(Action action)
+    {
+        if (Deferring) _pending.Enqueue(action);
+        else action();
+    }
+
+    public void Flush()
+    {
+        Deferring = false;
+        while (_pending.TryDequeue(out var a)) a();
+    }
 }
 
 public sealed class FakeSettingsService : ISettingsService

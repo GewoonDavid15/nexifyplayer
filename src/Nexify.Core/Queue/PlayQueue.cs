@@ -54,6 +54,9 @@ public sealed class PlayQueue
         }
     }
 
+    /// <summary>True when the current item is the last one in play order (nothing follows without Repeat.All).</summary>
+    public bool IsLastInOrder => _pos >= 0 && _pos == _order.Count - 1;
+
     public bool HasNext => _pos + 1 < _order.Count || (_repeat == RepeatMode.All && _order.Count > 0);
     public bool HasPrevious => _pos > 0 || (_repeat == RepeatMode.All && _order.Count > 0);
 

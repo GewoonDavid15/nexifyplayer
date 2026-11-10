@@ -329,4 +329,21 @@ public class PlayQueueTests
         Expect(() => q.ReplaceWith([a]));
         Expect(() => q.Clear());
     }
+
+    [Fact]
+    public void IsLastInOrder_TrueOnlyAtTheLastPlayPosition()
+    {
+        var q = new PlayQueue();
+        Assert.False(q.IsLastInOrder);
+        q.ReplaceWith(Items(3));
+        Assert.False(q.IsLastInOrder);
+        q.MoveTo(2);
+        Assert.True(q.IsLastInOrder);
+
+        q.Shuffle = true; // current becomes first in the shuffled order
+        Assert.False(q.IsLastInOrder);
+        q.Next();
+        q.Next();
+        Assert.True(q.IsLastInOrder);
+    }
 }

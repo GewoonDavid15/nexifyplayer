@@ -56,6 +56,8 @@ public class ThemeResourcesTests
         }
         Assert.IsType<LinearGradientBrush>(dark["Accent.Gradient"]);
         Assert.IsType<LinearGradientBrush>(light["Accent.Gradient"]);
+        Assert.IsType<Color>(dark["Accent.GlowColor"]);
+        Assert.IsType<Color>(light["Accent.GlowColor"]);
 
         Color C(ResourceDictionary d, string k) => ((SolidColorBrush)d[k]).Color;
         Assert.Equal(Color.FromRgb(0x0A, 0x0C, 0x10), C(dark, "Bg.Base"));

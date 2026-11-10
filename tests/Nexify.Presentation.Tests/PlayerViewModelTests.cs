@@ -25,8 +25,10 @@ public class PlayerViewModelTests
         _vm = Create();
     }
 
+    private readonly DeferredDispatcher _dispatcher = new();
+
     private PlayerViewModel Create()
-        => new(_engine, _queue, _settings, _recent, new FakeLocalization(), _notifications, new SyncDispatcher());
+        => new(_engine, _queue, _settings, _recent, new FakeLocalization(), _notifications, _dispatcher);
 
     private static MediaItem Audio(string name) => new($@"C:\Music\Album\{name}.mp3", MediaKind.Audio);
     private static MediaItem Video(string name) => new($@"C:\Videos\{name}.mp4", MediaKind.Video);
@@ -71,7 +73,9 @@ public class PlayerViewModelTests
         await _vm.PlayItemsAsync([A, B], OpenBehavior.Append);
         Assert.Same(A, Assert.Single(_engine.Opened));
 
+        _engine.RaiseState(PlaybackState.Playing);
         _engine.RaiseEndReached(); // -> B
+        _engine.RaiseState(PlaybackState.Playing);
         _engine.RaiseEndReached(); // last item, repeat off -> stops
         await _vm.PlayItemsAsync([C], OpenBehavior.Append);
         Assert.Same(C, _engine.Opened[^1]);
@@ -135,6 +139,7 @@ public class PlayerViewModelTests
     {
         await StartPlaying(A, B);
         _engine.RaiseEndReached();
+        _engine.RaiseState(PlaybackState.Playing);
         _engine.RaiseEndReached();
 
         Assert.Equal(2, _engine.Opened.Count);
@@ -448,5 +453,113 @@ public class PlayerViewModelTests
         Assert.True(vm.IsReady);
         Assert.False(vm.IsEngineLoading);
         Assert.Same(_engine.VideoSurfaceSource, vm.VideoSource);
+    }
+
+    // ------------------------------------------------------------------ stale events (fix round 1)
+
+    [Fact]
+    public async Task StaleEndReached_AfterUserPicksOther_IsIgnored()
+    {
+        await StartPlaying(A, B, C);
+        _dispatcher.Deferring = true;
+        _engine.RaiseEndReached();                         // for A, still waiting in the UI queue
+        _vm.PlayQueueItemCommand.Execute(_vm.QueueItems[2]); // user picks C meanwhile
+        _dispatcher.Flush();
+
+        Assert.Same(C, _queue.Current);
+        Assert.Equal([A, C], _engine.Opened);
+        Assert.Equal(0, _engine.StopCalls);
+        Assert.True(_vm.IsPlaying);
+    }
+
+    [Fact]
+    public async Task StaleFailure_AfterUserPicksOther_IsIgnored()
+    {
+        await _vm.PlayItemsAsync([A, B, C], OpenBehavior.Replace);
+        _vm.PlayQueueItemCommand.Execute(_vm.QueueItems[1]); // user picks B
+        _engine.RaiseFailedFor(A, PlaybackErrorReason.FileNotFound); // late failure for A
+
+        Assert.Same(B, _queue.Current);
+        Assert.Equal([A, B], _engine.Opened);
+        Assert.Empty(_notifications.Shown);
+    }
+
+    [Fact]
+    public async Task StalePlaying_ForPreviousItem_DoesNotRecordNewItem()
+    {
+        await _vm.PlayItemsAsync([A, B], OpenBehavior.Replace);
+        _dispatcher.Deferring = true;
+        _engine.RaiseState(PlaybackState.Playing);          // Playing of A, still queued
+        _vm.PlayQueueItemCommand.Execute(_vm.QueueItems[1]); // user picks B
+        _dispatcher.Flush();
+
+        Assert.Empty(_recent.Added);
+    }
+
+    [Fact]
+    public async Task EndReached_WhileNotPlaying_IsIgnored()
+    {
+        await _vm.PlayItemsAsync([A, B], OpenBehavior.Replace); // still Opening
+        _engine.RaiseEndReached();
+        Assert.Same(A, Assert.Single(_engine.Opened));
+    }
+
+    // ------------------------------------------------------------------ play after remove / failure (fix round 1)
+
+    [Fact]
+    public async Task Play_AfterRemovingCurrentLastItem_OpensNewCurrent_NotTheRemovedFile()
+    {
+        await StartPlaying(A, B);
+        _vm.NextCommand.Execute(null);
+        _engine.RaiseState(PlaybackState.Playing);
+        _vm.RemoveQueueItemCommand.Execute(_vm.QueueItems[1]); // B, current and last, repeat off -> stop
+        Assert.Equal(1, _engine.StopCalls);
+
+        _vm.PlayPauseCommand.Execute(null);
+
+        Assert.Equal(0, _engine.ToggleCalls);
+        Assert.Same(A, _engine.Opened[^1]);
+        Assert.Same(A, _queue.Current);
+    }
+
+    [Fact]
+    public async Task Play_AfterFailureStop_OpensCurrentAgain()
+    {
+        await _vm.PlayItemsAsync([A], OpenBehavior.Replace);
+        _engine.RaiseFailed(PlaybackErrorReason.FileNotFound); // nothing next -> stop
+
+        _vm.PlayPauseCommand.Execute(null);
+
+        Assert.Equal(0, _engine.ToggleCalls);
+        Assert.Equal([A, A], _engine.Opened);
+    }
+
+    [Fact]
+    public async Task Play_AfterMultipleFailedStop_OpensCurrentAgain()
+    {
+        await _vm.PlayItemsAsync([A, B, C], OpenBehavior.Replace);
+        _engine.RaiseFailed(PlaybackErrorReason.FileNotFound);
+        _engine.RaiseFailed(PlaybackErrorReason.FileNotFound);
+        _engine.RaiseFailed(PlaybackErrorReason.FileNotFound);
+
+        _vm.PlayPauseCommand.Execute(null);
+
+        Assert.Equal(0, _engine.ToggleCalls);
+        Assert.Equal([A, B, C, C], _engine.Opened);
+    }
+
+    [Fact]
+    public async Task RemoveCurrentLast_RepeatAll_WrapsToFirst()
+    {
+        await StartPlaying(A, B, C);
+        _vm.CycleRepeatCommand.Execute(null); // All
+        _vm.PlayQueueItemCommand.Execute(_vm.QueueItems[2]);
+        _engine.RaiseState(PlaybackState.Playing);
+
+        _vm.RemoveQueueItemCommand.Execute(_vm.QueueItems[2]);
+
+        Assert.Same(A, _queue.Current);
+        Assert.Same(A, _engine.Opened[^1]);
+        Assert.Equal(0, _engine.StopCalls);
     }
 }

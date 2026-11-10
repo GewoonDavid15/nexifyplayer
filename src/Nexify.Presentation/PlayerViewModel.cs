@@ -94,11 +94,31 @@ public sealed partial class PlayerViewModel : ObservableObject
         _videoSource = _engine.VideoSurfaceSource;
 
         _queue.Changed += (_, _) => SyncQueue();
-        _engine.StateChanged += (_, state) => _dispatcher.Post(() => OnStateChanged(state));
+        // The engine drops events of superseded opens, but they can still be waiting in the UI queue when the user
+        // opens something else. So each event remembers the item it belongs to and is ignored if that is no longer
+        // the item this view model opened.
+        _engine.StateChanged += (_, state) =>
+        {
+            var id = _engine.Current?.Id;
+            _dispatcher.Post(() =>
+            {
+                if (IsCurrentOpen(id)) OnStateChanged(state);
+            });
+        };
         _engine.PositionChanged += (_, position) => _dispatcher.Post(() => SetPosition(position.TotalSeconds));
         _engine.DurationChanged += (_, duration) => _dispatcher.Post(() => SetDuration(duration.TotalSeconds));
-        _engine.EndReached += (_, _) => _dispatcher.Post(OnEndReached);
-        _engine.PlaybackFailed += (_, error) => _dispatcher.Post(() => OnPlaybackFailed(error));
+        _engine.EndReached += (_, _) =>
+        {
+            var id = _engine.Current?.Id;
+            _dispatcher.Post(() =>
+            {
+                if (IsCurrentOpen(id)) OnEndReached();
+            });
+        };
+        _engine.PlaybackFailed += (_, error) => _dispatcher.Post(() =>
+        {
+            if (error.Item is null || IsCurrentOpen(error.Item.Id)) OnPlaybackFailed(error);
+        });
         _engine.MetadataChanged += (_, _) => _dispatcher.Post(UpdateCurrent);
 
         SyncQueue();
@@ -245,10 +265,14 @@ public sealed partial class PlayerViewModel : ObservableObject
 
     private void PlayPause()
     {
-        if (_opened is null || _engine.Current is null)
+        var current = _queue.Current ?? _queue.MoveTo(0);
+        if (current is null) return;
+
+        // Re-open when the engine holds something else (a removed item), nothing, or a failed item.
+        if (_opened?.Id != current.Id || _engine.Current?.Id != current.Id || _state == PlaybackState.Error)
         {
-            var item = _queue.Current ?? _queue.MoveTo(0);
-            if (item is not null) Open(item);
+            _failures = 0;
+            Open(current);
             return;
         }
 
@@ -297,13 +321,18 @@ public sealed partial class PlayerViewModel : ObservableObject
         if (row is null || IndexOf(row.Item) < 0) return;
         var wasCurrent = _queue.Current?.Id == row.Item.Id;
         var busy = IsBusy;
-        // Without Repeat.All the removed current item may have nothing after it: then playback stops.
-        var hadFollowing = _queue.HasNext;
+        // Spec 4.3: continue with the item that followed in play order. When the removed item was the last one,
+        // that is the first item with Repeat.All, and nothing (stop) otherwise.
+        var wasLast = _queue.IsLastInOrder;
+        var wrap = wasLast && _queue.Repeat == RepeatMode.All;
 
         _queue.Remove(row.Item);
         if (!wasCurrent) return;
 
-        if (_queue.Current is not { } next || !hadFollowing)
+        // The engine still holds the removed file: never resume it.
+        _opened = null;
+        var next = _queue.Items.Count == 0 ? null : wrap ? _queue.Next() : wasLast ? null : _queue.Current;
+        if (next is null)
         {
             StopPlayback();
             UpdateCurrent();
@@ -355,6 +384,8 @@ public sealed partial class PlayerViewModel : ObservableObject
 
     private void OnEndReached()
     {
+        // Only an item that is actually playing can end (not one that was just re-opened or stopped).
+        if (_state is not (PlaybackState.Playing or PlaybackState.Paused or PlaybackState.Ended)) return;
         _state = PlaybackState.Ended;
         if (_queue.NextForEndReached() is { } item)
         {
@@ -385,7 +416,7 @@ public sealed partial class PlayerViewModel : ObservableObject
         if (_failures >= MaxConsecutiveFailures)
         {
             _failures = 0;
-            StopPlayback();
+            StopAfterFailure();
             _notifications.Show(_loc["error.multipleFailed"], NotificationKind.Error);
             return;
         }
@@ -401,10 +432,20 @@ public sealed partial class PlayerViewModel : ObservableObject
 
         // Skip to the next item (not Repeat.One's replay: that would fail again).
         if (_queue.Next() is { } next) Open(next);
-        else StopPlayback();
+        else StopAfterFailure();
+    }
+
+    /// <summary>Stops after a failure; the state stays Error so Play opens the current item again.</summary>
+    private void StopAfterFailure()
+    {
+        StopPlayback();
+        _state = PlaybackState.Error;
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /// <summary>True when an engine event for item <paramref name="id"/> belongs to the item opened last.</summary>
+    private bool IsCurrentOpen(Guid? id) => id is not null && id == _opened?.Id;
 
     private void Open(MediaItem item)
     {
