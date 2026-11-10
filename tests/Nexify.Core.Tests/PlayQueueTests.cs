@@ -158,6 +158,49 @@ public class PlayQueueTests
     }
 
     [Fact]
+    public void Move_ShuffleOff_PlayOrderFollowsList()
+    {
+        var q = Filled(4); // a b c d, current first
+        var items = q.Items.ToList();
+        q.Move(1, 3);      // a c d b
+        Assert.Same(items[0], q.Current);
+        Assert.Same(items[2], q.Next());
+        Assert.Same(items[3], q.Next());
+        Assert.Same(items[1], q.Next());
+        Assert.Same(items[3], q.Previous());
+    }
+
+    [Fact]
+    public void Move_ShuffleOff_ToFront_PlayOrderFollowsList()
+    {
+        var q = Filled(3);
+        var items = q.Items.ToList();
+        q.Move(2, 0); // c a b
+        Assert.Same(items[0], q.Current);
+        Assert.Same(items[1], q.Next());
+        Assert.Null(q.Next());
+    }
+
+    [Fact]
+    public void Move_ShuffleOn_KeepsCurrent_AndVisitsEveryItemOnce()
+    {
+        var q = Filled(10);
+        q.Shuffle = true;
+        q.Next();
+        var cur = q.Current;
+        q.Move(0, 9);
+        q.Move(5, 2);
+        Assert.Same(cur, q.Current);
+        var played = new List<Guid>();
+        // walk back to the start of the play order, then forward through all
+        while (q.Previous() is { } p) played.Clear();
+        played.Add(q.Current!.Id);
+        while (q.Next() is { } n) played.Add(n.Id);
+        Assert.Equal(10, played.Distinct().Count());
+        Assert.Equal(10, played.Count);
+    }
+
+    [Fact]
     public void Remove_Current_SelectsFollowingItem()
     {
         var q = Filled(3);

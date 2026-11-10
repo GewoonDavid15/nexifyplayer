@@ -119,6 +119,8 @@ public sealed class PlayQueue
             else if (from < to && v > from && v <= to) _order[i] = v - 1;
             else if (from > to && v >= to && v < from) _order[i] = v + 1;
         }
+        // Without shuffle the play order must stay identical to the visible list order.
+        if (!_shuffle) RebuildOrder(CurrentIndex);
         Raise();
     }
 
