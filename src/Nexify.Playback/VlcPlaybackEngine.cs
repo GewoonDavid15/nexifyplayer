@@ -339,7 +339,9 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         var gen = Volatile.Read(ref _openGeneration);
         RunOnPlayer(gen, p =>
         {
-            if (_media is not null) p.Stop();
+            if (_media is null) return;
+            p.Stop();
+            SetState(gen, PlaybackState.Stopped);
         }, "stop");
     }
 
@@ -423,7 +425,8 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         var gen = CurrentPlayerGeneration;
         Post(gen, () =>
         {
-            if (_state != PlaybackState.Error) SetState(gen, PlaybackState.Stopped);
+            // LibVLC can report Stopped right after EndReached; Ended (and Error) must stay visible.
+            if (_state is not (PlaybackState.Error or PlaybackState.Ended)) SetState(gen, PlaybackState.Stopped);
         });
     }
 

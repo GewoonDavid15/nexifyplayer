@@ -108,28 +108,29 @@ public sealed class VlcPlaybackEngineTests : IDisposable
         await WaitUntil(() => Math.Abs((engine.Duration - Expected).TotalSeconds) <= 0.5, TimeSpan.FromSeconds(2),
             $"Duration within 0.5 s of 3 s (was {engine.Duration})");
 
-        // With --aout=dummy LibVLC decodes faster than realtime, so "position >= 1.3 s" alone would also
-        // pass without a working seek. Seek while paused (LibVLC reports no time while paused), resume,
-        // and require the first new position to be past 1.3 s: without the seek it would start near 0.
-        engine.Pause();
-        await WaitUntil(() => engine.State == PlaybackState.Paused || ended.Task.IsCompleted, SeekTimeout, $"State Paused (was {engine.State})");
+        // With --aout=dummy LibVLC plays faster than realtime, so "position >= 1.3 s" alone would also pass
+        // without a working seek. Seek backwards instead: once past 1.8 s, Seek(1.5 s) must make the
+        // position jump back, and land at >= 1.3 s. Without the seek the position never decreases.
+        await WaitUntil(() => engine.Position >= TimeSpan.FromSeconds(1.8) || ended.Task.IsCompleted, SeekTimeout,
+            $"Position >= 1.8 s before seeking (was {engine.Position})");
         Assert.False(ended.Task.IsCompleted, "Ended before the seek could be tested");
         var before = engine.Position;
-        Assert.True(before < TimeSpan.FromSeconds(1.2), $"Paused too late to test the seek (position {before})");
         engine.Seek(TimeSpan.FromSeconds(1.5));
-        await Task.Delay(300);
-        engine.Play();
 
         var deadline = DateTime.UtcNow + SeekTimeout;
-        var firstNew = before;
-        while (firstNew == before && !ended.Task.IsCompleted && DateTime.UtcNow < deadline)
+        var seen = before;
+        var jumped = TimeSpan.MinValue;
+        while (!ended.Task.IsCompleted && DateTime.UtcNow < deadline)
         {
+            var now = engine.Position;
+            if (now < seen) { jumped = now; break; }
+            seen = now;
             Thread.Sleep(1);
-            firstNew = engine.Position;
         }
-        _output.WriteLine($"Position before seek {before}, first after resume {firstNew}");
-        Assert.True(firstNew != before, $"Position did not change within 5 s after Seek(1.5 s) + Play (still {before})");
-        Assert.True(firstNew >= TimeSpan.FromSeconds(1.3), $"Position after Seek(1.5 s) was {firstNew}, expected >= 1.3 s");
+        _output.WriteLine($"Seek(1.5 s) at {before}: highest position seen {seen}, jumped back to {(jumped == TimeSpan.MinValue ? "-" : jumped)}");
+        Assert.True(jumped != TimeSpan.MinValue, $"Position never jumped back after Seek(1.5 s) at {before} (highest {seen}, ended {ended.Task.IsCompleted})");
+        Assert.True(jumped >= TimeSpan.FromSeconds(1.3) && jumped <= TimeSpan.FromSeconds(1.7),
+            $"Seek(1.5 s) landed at {jumped}, expected 1.3–1.7 s");
 
         await Within(ended.Task, EndTimeout, "EndReached");
         Assert.Equal(PlaybackState.Ended, engine.State);
