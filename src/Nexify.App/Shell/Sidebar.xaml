@@ -39,6 +39,8 @@
             <Setter Property="Width" Value="24" />
             <Setter Property="TextAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
+            <!-- grayscale anti-aliasing: ClearType fringes make thin icon strokes look coloured on dark backgrounds -->
+            <Setter Property="TextOptions.TextRenderingMode" Value="Grayscale" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                     <Setter Property="Foreground" Value="{DynamicResource Accent.Text}" />

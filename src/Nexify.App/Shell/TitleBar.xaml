@@ -16,6 +16,7 @@
             <Setter Property="Focusable" Value="False" />
             <Setter Property="IsTabStop" Value="False" />
             <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="TextOptions.TextRenderingMode" Value="Grayscale" />
             <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>

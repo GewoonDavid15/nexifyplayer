@@ -41,6 +41,10 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
         using (var session = AppSession.Start(output, theme: "dark", language: "en", width: 860, height: 600))
         {
             session.Shot(dir, "04-dark-compact-860x600");
+            session.Hover("Nav.NowPlaying", TimeSpan.FromMilliseconds(1200));
+            session.Shot(dir, "07-dark-compact-tooltip", parkPointer: false);
+            session.Hover("TitleBar.Maximize", TimeSpan.FromMilliseconds(400));
+            session.Shot(dir, "08-dark-maximize-hover", parkPointer: false);
         }
 
         using (var session = AppSession.Start(output, theme: "light", language: "nl", width: 1280, height: 800))
@@ -206,12 +210,24 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
             Thread.Sleep(600); // 150 ms transition + render
         }
 
-        public void Shot(string dir, string name)
+        public void Hover(string automationId, TimeSpan wait)
         {
-            // keep the pointer over the (non-interactive) logo so no hover state is captured
+            var element = Window.FindFirstDescendant(cf => cf.ByAutomationId(automationId))
+                ?? throw new InvalidOperationException($"{automationId} not found");
+            Mouse.MoveTo(Center(element.BoundingRectangle));
+            Thread.Sleep(wait);
+        }
+
+        public void Shot(string dir, string name, bool parkPointer = true)
+        {
             var r = Window.BoundingRectangle;
-            Mouse.Position = new Point(r.Left + 30, r.Top + 20);
-            Thread.Sleep(250);
+            if (parkPointer)
+            {
+                // keep the pointer over the (non-interactive) logo so no hover state is captured
+                Mouse.Position = new Point(r.Left + 30, r.Top + 20);
+                Thread.Sleep(250);
+            }
+
             var path = Path.Combine(dir, name + ".png");
             Capture.Element(Window).ToFile(path);
             _output.WriteLine($"Saved {path} ({r.Width} x {r.Height} px at {r.Left},{r.Top})");
