@@ -346,7 +346,9 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
             if (_state == PlaybackState.Paused) p.SetPause(false);
             else if (_state != PlaybackState.Playing)
             {
-                // Replay after Ended/Stopped starts from the beginning.
+                // Replay after Ended/Stopped starts from the beginning. LibVLC 3 keeps the ended input
+                // around and ignores Play() on it, so stop it first.
+                if (_state is PlaybackState.Ended or PlaybackState.Error) p.Stop();
                 ResetPosition(gen);
                 p.Play();
             }
