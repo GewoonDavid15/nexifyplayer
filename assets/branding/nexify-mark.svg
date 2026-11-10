@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Nexify Player mark: lime gradient tile (radius 22%) with a play triangle flowing into a slim chevron. -->
+  <defs>
+    <linearGradient id="nexify-accent" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E8FC9C"/>
+      <stop offset="0.5" stop-color="#C6F432"/>
+      <stop offset="1" stop-color="#A8DB1A"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56.32" fill="url(#nexify-accent)"/>
+  <path d="M54 72L146 128L54 184Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="20" stroke-linejoin="round"/>
+  <path d="M129.9 86L198.9 128L129.9 170" fill="none" stroke="#0A0C10" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

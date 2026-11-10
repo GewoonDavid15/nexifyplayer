@@ -17,6 +17,8 @@ jobs:
       - run: dotnet test tests/Nexify.Core.Tests -c Release --no-build
       - run: dotnet test tests/Nexify.Infrastructure.Tests -c Release --no-build
       - run: dotnet test tests/Nexify.Presentation.Tests -c Release --no-build
+      - name: WPF theme resource tests
+        run: dotnet test tests/Nexify.App.UiTests -c Release --no-build --filter "FullyQualifiedName~ThemeResourcesTests"
       - name: Install ffmpeg
         run: choco install ffmpeg -y --no-progress
       - name: Generate test media

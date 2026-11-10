@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Small-size variant of nexify-mark.svg (used for the 16 and 24 px icon frames): heavier chevron, wider gap. -->
+  <defs>
+    <linearGradient id="nexify-accent" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E8FC9C"/>
+      <stop offset="0.5" stop-color="#C6F432"/>
+      <stop offset="1" stop-color="#A8DB1A"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56.32" fill="url(#nexify-accent)"/>
+  <path d="M50 70L140 128L50 186Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M150.5 86L215.7 128L150.5 170" fill="none" stroke="#0A0C10" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

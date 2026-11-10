@@ -1,0 +1,32 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Nexify colour tokens, dark theme (spec 3.2). Swapped at runtime by ThemeService;
+         consume these keys with DynamicResource. Alpha: 4% = 0A, 5% = 0D, 6% = 0F, 10% = 1A, 12% = 1F, 25% = 40. -->
+    <SolidColorBrush x:Key="Bg.Base" Color="#0A0C10" />
+    <SolidColorBrush x:Key="Bg.Surface" Color="#11141B" />
+    <SolidColorBrush x:Key="Bg.SurfaceHover" Color="#0DFFFFFF" />
+    <SolidColorBrush x:Key="Border.Subtle" Color="#1AFFFFFF" />
+
+    <SolidColorBrush x:Key="Text.Primary" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Text.Body" Color="#D4D4D8" />
+    <SolidColorBrush x:Key="Text.Muted" Color="#A1A1AA" />
+
+    <SolidColorBrush x:Key="Accent" Color="#C6F432" />
+    <LinearGradientBrush x:Key="Accent.Gradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#E8FC9C" />
+        <GradientStop Offset="0.5" Color="#C6F432" />
+        <GradientStop Offset="1" Color="#A8DB1A" />
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="Accent.OnAccent" Color="#0A0C10" />
+    <SolidColorBrush x:Key="Accent.Text" Color="#C6F432" />
+    <SolidColorBrush x:Key="Accent.Soft" Color="#1FC6F432" />
+
+    <SolidColorBrush x:Key="Status.Success" Color="#34D399" />
+    <SolidColorBrush x:Key="Status.Error" Color="#F87171" />
+
+    <!-- Window background overlay: subtle radial lime glow top-left (#C6F432 6%), spec 3.2. -->
+    <RadialGradientBrush x:Key="Bg.Glow" Center="0,0" GradientOrigin="0,0" RadiusX="0.9" RadiusY="0.9">
+        <GradientStop Offset="0" Color="#0FC6F432" />
+        <GradientStop Offset="1" Color="#00C6F432" />
+    </RadialGradientBrush>
+</ResourceDictionary>

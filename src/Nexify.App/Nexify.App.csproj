@@ -6,6 +6,7 @@
     <AssemblyName>NexifyPlayer</AssemblyName>
     <RootNamespace>Nexify.App</RootNamespace>
     <StartupObject>Nexify.App.Program</StartupObject>
+    <ApplicationIcon>Assets\nexify.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
@@ -15,6 +16,13 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Languages\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Branding and embedded fonts (OFL-1.1); fonts are referenced as pack://application:,,,/Assets/Fonts/#Inter|#Archivo -->
+    <Resource Include="Assets\Fonts\*.ttf" />
+    <Resource Include="Assets\nexify.ico" />
+    <Resource Include="Assets\nexify-mark.png" />
+    <Content Include="Assets\Fonts\*-OFL.txt" Link="Licenses\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Nexify.Core\Nexify.Core.csproj" />
