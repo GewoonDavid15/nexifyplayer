@@ -14,6 +14,9 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240627000" ExcludeAssets="all" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Languages\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Nexify.Core\Nexify.Core.csproj" />
     <ProjectReference Include="..\Nexify.Infrastructure\Nexify.Infrastructure.csproj" />
     <ProjectReference Include="..\Nexify.Playback\Nexify.Playback.csproj" />
