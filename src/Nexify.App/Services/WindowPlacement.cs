@@ -27,8 +27,12 @@ public static class WindowPlacement
         window.WindowState = bounds.IsMaximized ? WindowState.Maximized : WindowState.Normal;
     }
 
-    /// <summary>The restore bounds plus maximized state, or null when the window has no usable bounds.</summary>
-    public static WindowBounds? Capture(Window window)
+    /// <summary>
+    /// The restore bounds plus maximized state, or null when the window has no usable bounds. While minimized,
+    /// <paramref name="lastNonMinimizedState"/> decides the maximized flag (a window minimized from maximized
+    /// reopens maximized).
+    /// </summary>
+    public static WindowBounds? Capture(Window window, WindowState lastNonMinimizedState)
     {
         var r = window.WindowState == WindowState.Normal
             ? new System.Windows.Rect(window.Left, window.Top, window.ActualWidth, window.ActualHeight)
@@ -39,7 +43,8 @@ public static class WindowPlacement
             return null;
         }
 
-        return new WindowBounds(r.Left, r.Top, r.Width, r.Height, window.WindowState == WindowState.Maximized);
+        var state = window.WindowState == WindowState.Minimized ? lastNonMinimizedState : window.WindowState;
+        return new WindowBounds(r.Left, r.Top, r.Width, r.Height, state == WindowState.Maximized);
     }
 
     /// <summary>All monitor rectangles and the primary work area, in DIP.</summary>

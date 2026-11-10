@@ -111,10 +111,16 @@ public sealed class AppServices : IDisposable
         }
 
         _disposed = true;
-        Log.Information("Nexify Player shutting down");
-        Settings.Dispose();
-        Theme.Dispose();
-        Engine.Dispose();
+
+        // Each step is isolated: a failing step is logged and never skips the later ones; the log is flushed last.
+        ShutdownSequence.Run(
+            (step, ex) => Log.Error(ex, "Dispose {Step} failed", step),
+            ("log-start", () => Log.Information("Nexify Player shutting down")),
+            ("settings", Settings.Dispose),
+            ("theme", Theme.Dispose),
+            ("engine", Engine.Dispose));
+
+        // Final step, always reached because ShutdownSequence never throws.
         Serilog.Log.CloseAndFlush();
     }
 }

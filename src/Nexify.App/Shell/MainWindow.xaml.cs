@@ -34,14 +34,26 @@ public partial class MainWindow : Window
 
         SourceInitialized += OnSourceInitialized;
         SizeChanged += (_, _) => OnSizeOrStateChanged();
-        StateChanged += (_, _) => OnSizeOrStateChanged();
+        StateChanged += (_, _) =>
+        {
+            if (WindowState != WindowState.Minimized)
+            {
+                LastNonMinimizedState = WindowState;
+            }
+
+            OnSizeOrStateChanged();
+        };
         Closed += OnClosed;
         _theme.EffectiveThemeChanged += OnEffectiveThemeChanged;
         _shell.PropertyChanged += OnShellPropertyChanged;
 
         _shell.UpdateForWidth(Width);
+        Loaded += (_, _) => LastNonMinimizedState = WindowState == WindowState.Minimized ? LastNonMinimizedState : WindowState;
         ShowPage(_shell.CurrentPage, animate: false);
     }
+
+    /// <summary>Normal or Maximized: the state to restore when the window is closed while minimized.</summary>
+    public WindowState LastNonMinimizedState { get; private set; } = WindowState.Normal;
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {

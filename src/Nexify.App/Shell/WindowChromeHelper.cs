@@ -133,18 +133,11 @@ public sealed class WindowChromeHelper : IDisposable
                 break;
 
             case WM_NCLBUTTONDOWN:
+            case WM_NCLBUTTONDBLCLK:
+                // A quick second click arrives as a double-click; treat it as a press so the next button-up toggles again.
                 if (wParam.ToInt32() == HTMAXBUTTON)
                 {
                     SetPressed(true);
-                    handled = true;
-                    return IntPtr.Zero;
-                }
-
-                break;
-
-            case WM_NCLBUTTONDBLCLK:
-                if (wParam.ToInt32() == HTMAXBUTTON)
-                {
                     handled = true;
                     return IntPtr.Zero;
                 }

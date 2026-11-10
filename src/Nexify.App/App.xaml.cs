@@ -1,6 +1,7 @@
 using System.Windows;
 using Nexify.App.Services;
 using Nexify.App.Shell;
+using Nexify.Presentation;
 
 namespace Nexify.App;
 
@@ -42,13 +43,22 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    private void SaveWindowPlacement(Window window)
+    /// <summary>Saves the placement; a failure is logged and never blocks closing the window.</summary>
+    private void SaveWindowPlacement(MainWindow window)
     {
-        if (_services is null || WindowPlacement.Capture(window) is not { } bounds)
+        if (_services is not { } services)
         {
             return;
         }
 
-        _services.Settings.Update(s => s with { Window = bounds });
+        ShutdownSequence.Run(
+            (step, ex) => services.Log.Error(ex, "Saving {Step} failed", step),
+            ("window placement", () =>
+            {
+                if (WindowPlacement.Capture(window, window.LastNonMinimizedState) is { } bounds)
+                {
+                    services.Settings.Update(s => s with { Window = bounds });
+                }
+            }));
     }
 }
