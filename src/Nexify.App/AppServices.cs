@@ -5,7 +5,10 @@ using System.Windows;
 using Nexify.App.Localization;
 using Nexify.App.Services;
 using Nexify.Core.Localization;
+using Nexify.Core.Media;
 using Nexify.Core.Playback;
+using Nexify.Core.Queue;
+using Nexify.Core.Settings;
 using Nexify.Infrastructure;
 using Nexify.Infrastructure.Localization;
 using Nexify.Infrastructure.Recent;
@@ -34,7 +37,10 @@ public sealed class AppServices : IDisposable
         ThemeService theme,
         IUiDispatcher dispatcher,
         VlcPlaybackEngine engine,
-        ShellViewModel shell)
+        ShellViewModel shell,
+        PlayQueue queue,
+        NotificationsViewModel notifications,
+        PlayerViewModel player)
     {
         Args = args;
         Paths = paths;
@@ -46,9 +52,12 @@ public sealed class AppServices : IDisposable
         Dispatcher = dispatcher;
         Engine = engine;
         Shell = shell;
+        Queue = queue;
+        Notifications = notifications;
+        Player = player;
     }
 
-    /// <summary>Command-line arguments (file or folder paths), opened once the engine is ready (Task 13).</summary>
+    /// <summary>Command-line arguments (file or folder paths), opened once the engine is ready.</summary>
     public string[] Args { get; }
 
     public AppPaths Paths { get; }
@@ -60,6 +69,9 @@ public sealed class AppServices : IDisposable
     public IUiDispatcher Dispatcher { get; }
     public IPlaybackEngine Engine { get; }
     public ShellViewModel Shell { get; }
+    public PlayQueue Queue { get; }
+    public NotificationsViewModel Notifications { get; }
+    public PlayerViewModel Player { get; }
 
     /// <summary>Completes when LibVLC has loaded (or failed to; see <see cref="IPlaybackEngine.InitializeAsync"/>).</summary>
     public Task EngineReady { get; private set; } = Task.CompletedTask;
@@ -92,14 +104,40 @@ public sealed class AppServices : IDisposable
         var dispatcher = new WpfDispatcher(app.Dispatcher);
         var engine = new VlcPlaybackEngine(log);
         var shell = new ShellViewModel();
+        var queue = new PlayQueue();
+        var notifications = new NotificationsViewModel(dispatcher);
+        var player = new PlayerViewModel(engine, queue, settings, recent, localization, notifications, dispatcher);
 
-        return new AppServices(args, paths, log, settings, recent, localization, theme, dispatcher, engine, shell);
+        return new AppServices(args, paths, log, settings, recent, localization, theme, dispatcher, engine, shell, queue, notifications, player);
     }
 
     /// <summary>Starts loading LibVLC on a background thread without blocking the UI (spec 4.1 step 2).</summary>
     public void StartEngine()
     {
-        EngineReady = Engine.InitializeAsync();
+        EngineReady = StartEngineAsync();
+    }
+
+    private async Task StartEngineAsync()
+    {
+        await Player.InitializeEngineAsync().ConfigureAwait(false);
+        Dispatcher.Post(OpenStartupArguments);
+    }
+
+    /// <summary>Spec 4.1 step 3: files given on the command line play once the engine is ready.</summary>
+    // Replaced by MediaOpener in Task 13 (folders, unsupported-file summary, open behaviour).
+    private void OpenStartupArguments()
+    {
+        var items = Args
+            .Select(arg => MediaFormats.TryCreate(Path.GetFullPath(arg)))
+            .OfType<MediaItem>()
+            .ToList();
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        Log.Information("Opening {Count} file(s) from the command line", items.Count);
+        _ = Player.PlayItemsAsync(items, OpenBehavior.Replace);
     }
 
     /// <summary>Flushes settings, stops following the Windows theme, releases LibVLC and flushes the log.</summary>

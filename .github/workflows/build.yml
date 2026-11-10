@@ -19,13 +19,28 @@ jobs:
       - run: dotnet test tests/Nexify.Presentation.Tests -c Release --no-build
       - name: WPF theme resource tests
         run: dotnet test tests/Nexify.App.UiTests -c Release --no-build --filter "FullyQualifiedName~ThemeResourcesTests"
+      - name: Install ffmpeg
+        run: choco install ffmpeg -y --no-progress
+      - name: Generate test media
+        shell: pwsh
+        run: |
+          $ffmpeg = 'C:\ProgramData\chocolatey\bin\ffmpeg.exe'
+          pwsh tests/media/generate-test-media.ps1 -OutDir "$env:RUNNER_TEMP\media" -Ffmpeg $ffmpeg
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "NEXIFY_TEST_MEDIA=$env:RUNNER_TEMP\media" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Generate showcase media (player screenshots)
+        shell: pwsh
+        run: |
+          pwsh tests/media/generate-showcase-media.ps1 -OutDir "$env:RUNNER_TEMP\showcase" -Ffmpeg 'C:\ProgramData\chocolatey\bin\ffmpeg.exe'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "NEXIFY_SHOWCASE_MEDIA=$env:RUNNER_TEMP\showcase" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Set display resolution (for shell screenshots)
         shell: pwsh
         continue-on-error: true
         run: |
           Set-DisplayResolution -Width 1920 -Height 1080 -Force
           Get-CimInstance Win32_VideoController | Format-Table Name, CurrentHorizontalResolution, CurrentVerticalResolution
-      - name: Shell screenshots and title-bar checks
+      - name: Shell and player screenshots, title-bar checks
         env:
           NEXIFY_SCREENSHOT_DIR: ${{ runner.temp }}\screenshots
         run: dotnet test tests/Nexify.App.UiTests -c Release --no-build --filter "FullyQualifiedName~ShellScreenshotTests" --logger "console;verbosity=detailed"
@@ -36,15 +51,6 @@ jobs:
           name: screenshots
           path: ${{ runner.temp }}\screenshots
           if-no-files-found: warn
-      - name: Install ffmpeg
-        run: choco install ffmpeg -y --no-progress
-      - name: Generate test media
-        shell: pwsh
-        run: |
-          $ffmpeg = 'C:\ProgramData\chocolatey\bin\ffmpeg.exe'
-          pwsh tests/media/generate-test-media.ps1 -OutDir "$env:RUNNER_TEMP\media" -Ffmpeg $ffmpeg
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          "NEXIFY_TEST_MEDIA=$env:RUNNER_TEMP\media" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Playback integration tests
         run: dotnet test tests/Nexify.Playback.Tests -c Release --no-build --logger trx --logger "console;verbosity=normal" --blame
       - name: Upload test results

@@ -26,7 +26,7 @@ public partial class App : Application
         var services = AppServices.Create(_args, this);
         _services = services;
 
-        var window = new MainWindow(services.Shell, services.Theme);
+        var window = new MainWindow(services.Shell, services.Theme, services.Player, services.Notifications);
         WindowPlacement.Apply(window, services.Settings.Current.Window);
         window.Closing += (_, _) => SaveWindowPlacement(window);
         MainWindow = window;

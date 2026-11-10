@@ -58,6 +58,71 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
         }
     }
 
+    /// <summary>
+    /// Player screenshots with real media (NEXIFY_SHOWCASE_MEDIA, generated in CI): video on Now playing with a queue,
+    /// audio playing on Home, error toasts, the queue context menu and the light theme.
+    /// </summary>
+    [WindowsOnlyFact]
+    public void Player_Screenshots()
+    {
+        if (Environment.GetEnvironmentVariable("NEXIFY_SHOWCASE_MEDIA") is not { Length: > 0 } media || !Directory.Exists(media))
+        {
+            output.WriteLine("NEXIFY_SHOWCASE_MEDIA not set; skipping player screenshots");
+            return;
+        }
+
+        var dir = ScreenshotDir();
+        string M(string name) => Path.Combine(media, name);
+        string[] videoQueue = [M("Nexify Demo.mp4"), M("Evening Drive.mp3"), M("Morning Light.flac"), M("City Lights.mp4"), M("Night Walk.ogg")];
+        string[] audioQueue = [M("Evening Drive.mp3"), M("Morning Light.flac"), M("Nexify Demo.mp4"), M("Night Walk.ogg")];
+
+        using (var session = AppSession.Start(output, theme: "dark", language: "en", width: 1280, height: 800, args: videoQueue))
+        {
+            session.WaitForPlayback("Nexify Demo");
+            session.Select("Nav.NowPlaying");
+            Thread.Sleep(1500);
+            session.Shot(dir, "09-dark-nowplaying-video");
+
+            session.RightClickQueueRow(2);
+            session.Shot(dir, "10-dark-queue-contextmenu", parkPointer: false);
+            Keyboard.Press(FlaUI.Core.WindowsAPI.VirtualKeyShort.ESCAPE);
+        }
+
+        using (var session = AppSession.Start(output, theme: "dark", language: "en", width: 1280, height: 800, args: audioQueue))
+        {
+            session.WaitForPlayback("Evening Drive");
+            Thread.Sleep(3000); // let the time progress
+            session.Shot(dir, "11-dark-home-audio-playing");
+            session.Select("Nav.NowPlaying");
+            session.Shot(dir, "12-dark-nowplaying-audio");
+        }
+
+        using (var session = AppSession.Start(output, theme: "dark", language: "en", width: 1280, height: 800,
+                   args: [M("Missing Song.mp3"), M("Old Recording.wav"), M("Evening Drive.mp3")]))
+        {
+            Assert.True(
+                WaitUntil(() => session.Window.FindAllDescendants(cf => cf.ByAutomationId("Toast.Message")).Length >= 2, TimeSpan.FromSeconds(20)),
+                "expected two error toasts for the missing files");
+            session.WaitForPlayback("Evening Drive");
+            session.Shot(dir, "13-dark-toasts");
+        }
+
+        using (var session = AppSession.Start(output, theme: "light", language: "nl", width: 1280, height: 800, args: videoQueue))
+        {
+            session.WaitForPlayback("Nexify Demo");
+            session.Select("Nav.NowPlaying");
+            Thread.Sleep(1500);
+            session.Shot(dir, "14-light-nowplaying-video-nl");
+        }
+
+        using (var session = AppSession.Start(output, theme: "light", language: "en", width: 860, height: 600, args: audioQueue))
+        {
+            session.WaitForPlayback("Evening Drive");
+            session.Select("Nav.NowPlaying");
+            session.Shot(dir, "15-light-nowplaying-audio-compact");
+        }
+    }
+
     [WindowsOnlyFact]
     public void Shell_MaximizeButton_ReportsHtMaxButton_AndClickMaximizes()
     {
@@ -164,7 +229,7 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
 
         public Window Window { get; }
 
-        public static AppSession Start(ITestOutputHelper output, string theme, string language, int width, int height, bool maximized = false)
+        public static AppSession Start(ITestOutputHelper output, string theme, string language, int width, int height, bool maximized = false, string[]? args = null)
         {
             var dataDir = Path.Combine(Path.GetTempPath(), "nexify-ui-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dataDir);
@@ -179,6 +244,11 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
             var exe = LocateAppExe();
             output.WriteLine($"Launching {exe} (data {dataDir}, {theme}/{language}, {width}x{height}{(maximized ? ", maximized" : "")})");
             var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
+            foreach (var arg in args ?? [])
+            {
+                psi.ArgumentList.Add(arg);
+            }
+
             psi.Environment["NEXIFY_DATA_DIR"] = dataDir;
 
             var app = Application.Launch(psi);
@@ -208,6 +278,29 @@ public sealed class ShellScreenshotTests(ITestOutputHelper output)
                 ?? throw new InvalidOperationException($"{automationId} not found");
             item.Patterns.SelectionItem.Pattern.Select();
             Thread.Sleep(600); // 150 ms transition + render
+        }
+
+        /// <summary>Waits until the transport bar shows <paramref name="title"/> and the time has started to run.</summary>
+        public void WaitForPlayback(string title)
+        {
+            string Text(string id) => Window.FindFirstDescendant(cf => cf.ByAutomationId(id))?.Name ?? string.Empty;
+            var playing = WaitUntil(
+                () => Text("Transport.Title") == title && Text("Transport.Position") is { Length: > 0 } p && p != "0:00",
+                TimeSpan.FromSeconds(25));
+            _output.WriteLine($"Transport: title '{Text("Transport.Title")}', position {Text("Transport.Position")} / {Text("Transport.Duration")} (playing: {playing})");
+            Assert.True(playing, $"'{title}' did not start playing");
+        }
+
+        public void RightClickQueueRow(int index)
+        {
+            var list = Window.FindFirstDescendant(cf => cf.ByAutomationId("Queue.List"))
+                ?? throw new InvalidOperationException("Queue.List not found");
+            var rows = list.FindAllChildren(cf => cf.ByControlType(ControlType.ListItem));
+            Assert.True(rows.Length > index, $"queue has {rows.Length} rows");
+            Mouse.MoveTo(Center(rows[index].BoundingRectangle));
+            Thread.Sleep(300);
+            Mouse.RightClick();
+            Thread.Sleep(600);
         }
 
         public void Hover(string automationId, TimeSpan wait)

@@ -1,0 +1,95 @@
+<UserControl x:Class="Nexify.App.Notifications.ToastHost"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:Nexify.App.Localization"
+             xmlns:vm="clr-namespace:Nexify.Presentation;assembly=Nexify.Presentation"
+             AutomationProperties.AutomationId="Toasts">
+    <!-- DataContext: NotificationsViewModel. Bottom right above the transport bar (spec 5): max 3, newest at the bottom.
+         340 px wide so it stays over the queue column of Now playing and never overlaps the native video window. -->
+    <ItemsControl ItemsSource="{Binding Visible}" Focusable="False" Width="340">
+        <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type vm:NotificationItem}">
+                <Border Style="{StaticResource Card}" Margin="0,10,0,0" Padding="12,12,8,12"
+                        AutomationProperties.AutomationId="Toast.Item" RenderTransformOrigin="0.5,1">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.28" Color="#000000" />
+                    </Border.Effect>
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="Slide" Y="8" />
+                    </Border.RenderTransform>
+                    <Border.Triggers>
+                        <EventTrigger RoutedEvent="Loaded">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.15" />
+                                    <DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="Y" From="8" To="0" Duration="0:0:0.15">
+                                        <DoubleAnimation.EasingFunction>
+                                            <CubicEase EasingMode="EaseOut" />
+                                        </DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Border.Triggers>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- coloured icon per kind: Tag carries the status brush -->
+                        <Border Width="32" Height="32" VerticalAlignment="Top">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Tag" Value="{DynamicResource Accent.Text}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Kind}" Value="{x:Static vm:NotificationKind.Success}">
+                                            <Setter Property="Tag" Value="{DynamicResource Status.Success}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Kind}" Value="{x:Static vm:NotificationKind.Error}">
+                                            <Setter Property="Tag" Value="{DynamicResource Status.Error}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Border CornerRadius="10" Opacity="0.15"
+                                        Background="{Binding Tag, RelativeSource={RelativeSource AncestorType=Border}}" />
+                                <TextBlock FontFamily="{DynamicResource IconFont}" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           TextOptions.TextRenderingMode="Grayscale"
+                                           Foreground="{Binding Tag, RelativeSource={RelativeSource AncestorType=Border}}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="&#xE946;" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Kind}" Value="{x:Static vm:NotificationKind.Success}">
+                                                    <Setter Property="Text" Value="&#xE73E;" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Kind}" Value="{x:Static vm:NotificationKind.Error}">
+                                                    <Setter Property="Text" Value="&#xE783;" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Grid.Column="1" Margin="12,0,4,0" VerticalAlignment="Center"
+                                   Style="{StaticResource TextBlock.Body}" Foreground="{DynamicResource Text.Primary}"
+                                   TextWrapping="Wrap" TextTrimming="None" LineHeight="20"
+                                   Text="{Binding Message}" AutomationProperties.AutomationId="Toast.Message" />
+
+                        <Button Grid.Column="2" Style="{StaticResource Button.Icon}" Width="28" Height="28" FontSize="10"
+                                VerticalAlignment="Top" Content="&#xE711;" TextOptions.TextRenderingMode="Grayscale"
+                                Foreground="{DynamicResource Text.Muted}"
+                                ToolTip="{loc:T common.close}" AutomationProperties.Name="{loc:T common.close}"
+                                Command="{Binding DataContext.DismissCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                CommandParameter="{Binding}" />
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>

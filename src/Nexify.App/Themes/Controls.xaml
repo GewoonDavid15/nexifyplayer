@@ -754,4 +754,116 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+    <!-- ===================================================================== Queue row (Now playing) -->
+    <!-- 56 px row, radius 12; hover Bg.SurfaceHover; the playing item (Tag=True) gets Accent.Soft. -->
+    <Style x:Key="ListBoxItem.Queue" TargetType="ListBoxItem">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Body}" />
+        <Setter Property="FontSize" Value="{DynamicResource Size.Body}" />
+        <Setter Property="Foreground" Value="{DynamicResource Text.Body}" />
+        <Setter Property="Height" Value="56" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+        <Setter Property="Padding" Value="8,0,10,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Grid Background="Transparent">
+                        <Border x:Name="SelectedLayer" Background="{DynamicResource Bg.SurfaceHover}" CornerRadius="12" Opacity="0" />
+                        <Border x:Name="HoverLayer" Background="{DynamicResource Bg.SurfaceHover}" CornerRadius="12" Opacity="0" />
+                        <Border x:Name="ActiveLayer" Background="{DynamicResource Accent.Soft}" CornerRadius="12" Opacity="0" />
+                        <Border x:Name="FocusRing" BorderBrush="{DynamicResource Accent.Text}" BorderThickness="1.5" CornerRadius="12" Opacity="0" />
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.1" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.1" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="SelectedLayer" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="Tag">
+                            <Trigger.Value>
+                                <sys:Boolean>True</sys:Boolean>
+                            </Trigger.Value>
+                            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}" />
+                            <Setter TargetName="ActiveLayer" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="FocusRing" Property="Opacity" Value="1" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===================================================================== Context menu -->
+    <Style x:Key="ContextMenu.Nexify" TargetType="ContextMenu">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="HasDropShadow" Value="False" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Body}" />
+        <Setter Property="FontSize" Value="{DynamicResource Size.Body}" />
+        <Setter Property="Foreground" Value="{DynamicResource Text.Primary}" />
+        <Setter Property="Background" Value="{DynamicResource Bg.Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Border.Subtle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1" CornerRadius="12" Padding="4" MinWidth="200" SnapsToDevicePixels="True">
+                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="MenuItem.Nexify" TargetType="MenuItem">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource Text.Body}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Grid x:Name="Root" Background="Transparent" Height="36">
+                        <Border x:Name="HoverLayer" Background="{DynamicResource Bg.SurfaceHover}" CornerRadius="8" Opacity="0" />
+                        <StackPanel Orientation="Horizontal" Margin="10,0,16,0" VerticalAlignment="Center">
+                            <ContentPresenter ContentSource="Icon" Width="16" Height="16" Margin="0,0,12,0"
+                                              TextElement.FontFamily="{DynamicResource IconFont}" TextElement.FontSize="14"
+                                              TextOptions.TextRenderingMode="Grayscale" />
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="HoverLayer" Property="Opacity" Value="1" />
+                            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

@@ -3,6 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:Nexify.App.Localization"
         xmlns:shell="clr-namespace:Nexify.App.Shell"
+        xmlns:player="clr-namespace:Nexify.App.Player"
+        xmlns:notifications="clr-namespace:Nexify.App.Notifications"
         Title="{loc:T app.title}"
         AutomationProperties.AutomationId="MainWindow"
         Icon="pack://application:,,,/Assets/nexify.ico"
@@ -38,17 +40,19 @@
 
         <shell:TitleBar x:Name="TitleBarPanel" Grid.Row="0" Grid.Column="1" />
 
-        <!-- Page area: switched with a 150 ms fade + 8 px slide -->
-        <ContentControl x:Name="PageHost" Grid.Row="1" Grid.Column="1" Focusable="False"
-                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-            <ContentControl.RenderTransform>
+        <!-- Page area: every page is created once and stays in the tree (inactive pages are Hidden), so the
+             Now playing video window exists before that page is first shown. Switched with a 150 ms fade + 8 px slide. -->
+        <Grid x:Name="PageHost" Grid.Row="1" Grid.Column="1">
+            <Grid.RenderTransform>
                 <TranslateTransform x:Name="PageTranslate" />
-            </ContentControl.RenderTransform>
-        </ContentControl>
+            </Grid.RenderTransform>
+        </Grid>
 
-        <!-- Transport bar row (88 px, spec 3.4). Task 12 replaces this placeholder with the TransportBar. -->
-        <Border x:Name="TransportHost" Grid.Row="2" Grid.ColumnSpan="2"
-                Background="{DynamicResource Bg.Surface}"
-                BorderBrush="{DynamicResource Border.Subtle}" BorderThickness="0,1,0,0" />
+        <!-- Toasts bottom right above the transport bar (spec 5) -->
+        <notifications:ToastHost x:Name="Toasts" Grid.Row="1" Grid.Column="1" Panel.ZIndex="10"
+                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,16" />
+
+        <!-- Transport bar (88 px, spec 3.4) -->
+        <player:TransportBar x:Name="Transport" Grid.Row="2" Grid.ColumnSpan="2" />
     </Grid>
 </Window>

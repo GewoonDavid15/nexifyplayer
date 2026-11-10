@@ -11,7 +11,7 @@ namespace Nexify.App.Shell;
 
 /// <summary>
 /// The shell (spec 3.3/3.4): custom title bar, sidebar navigation, page area and the transport-bar row.
-/// Pages are created once and kept, so their state (later: the video surface) survives navigation.
+/// Pages are created once and kept in the tree, so their state (and the video surface) survives navigation.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -20,15 +20,25 @@ public partial class MainWindow : Window
 
     private readonly ShellViewModel _shell;
     private readonly IThemeService _theme;
+    private readonly PlayerViewModel _player;
     private readonly WindowChromeHelper _chrome;
     private readonly Dictionary<NavPage, FrameworkElement> _pages = [];
+    private FrameworkElement? _activePage;
 
-    public MainWindow(ShellViewModel shell, IThemeService theme)
+    public MainWindow(ShellViewModel shell, IThemeService theme, PlayerViewModel player, NotificationsViewModel notifications)
     {
         _shell = shell;
         _theme = theme;
+        _player = player;
         InitializeComponent();
         DataContext = shell;
+        Transport.DataContext = player;
+        Transport.QueueRequested += (_, _) => _shell.NavigateCommand.Execute(NavPage.NowPlaying);
+        Toasts.DataContext = notifications;
+        foreach (var page in Enum.GetValues<NavPage>())
+        {
+            GetPage(page);
+        }
 
         _chrome = new WindowChromeHelper(this, TitleBarPanel.MaximizeButton);
 
@@ -91,12 +101,16 @@ public partial class MainWindow : Window
     private void ShowPage(NavPage page, bool animate)
     {
         var view = GetPage(page);
-        if (ReferenceEquals(PageHost.Content, view))
+        if (ReferenceEquals(_activePage, view))
         {
             return;
         }
 
-        PageHost.Content = view;
+        _activePage = view;
+        foreach (var other in _pages.Values)
+        {
+            other.Visibility = ReferenceEquals(other, view) ? Visibility.Visible : Visibility.Hidden;
+        }
 
         if (!animate || !AnimationsEnabled)
         {
@@ -123,11 +137,13 @@ public partial class MainWindow : Window
             view = page switch
             {
                 NavPage.Home => new HomePage(),
-                NavPage.NowPlaying => new NowPlayingPage(),
+                NavPage.NowPlaying => new NowPlayingPage { DataContext = _player },
                 NavPage.Settings => new SettingsPage(),
                 _ => throw new ArgumentOutOfRangeException(nameof(page), page, null),
             };
+            view.Visibility = Visibility.Hidden;
             _pages[page] = view;
+            PageHost.Children.Add(view);
         }
 
         return view;

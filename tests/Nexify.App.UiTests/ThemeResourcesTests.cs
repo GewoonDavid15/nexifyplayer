@@ -123,6 +123,20 @@ public class ThemeResourcesTests
         Add(new ScrollBar { Orientation = Orientation.Vertical, Height = 100 }, "ScrollBar.Thin");
         Add(new ScrollBar { Orientation = Orientation.Horizontal, Width = 100 }, "ScrollBar.Thin");
         Add(new TextBlock { Text = "Title" }, "TextBlock.Title");
+        var queue = new ListBox();
+        queue.Items.Add(new ListBoxItem { Content = "Current", Tag = true });
+        queue.Items.Add(new ListBoxItem { Content = "Other", Tag = false, IsSelected = true });
+        foreach (ListBoxItem item in queue.Items)
+        {
+            item.SetResourceReference(FrameworkElement.StyleProperty, "ListBoxItem.Queue");
+            styled.Add(item);
+        }
+        host.Children.Add(queue);
+        var menu = new ContextMenu { Resources = res };
+        menu.SetResourceReference(FrameworkElement.StyleProperty, "ContextMenu.Nexify");
+        var menuItem = new MenuItem { Header = "Remove", Icon = new TextBlock { Text = "\uE74D" } };
+        menuItem.SetResourceReference(FrameworkElement.StyleProperty, "MenuItem.Nexify");
+        menu.Items.Add(menuItem);
 
         host.Measure(new Size(800, 2000));
         host.Arrange(new Rect(0, 0, 800, 2000));
@@ -135,6 +149,15 @@ public class ThemeResourcesTests
         }
         combo.IsDropDownOpen = true;
         combo.IsDropDownOpen = false;
+
+        // The context menu lives in its own popup: open it to instantiate the menu and item templates.
+        menu.PlacementTarget = host;
+        menu.IsOpen = true;
+        menu.UpdateLayout();
+        Assert.True(menu.Style is not null && menuItem.Style is not null, "context menu styles not applied");
+        Assert.True(VisualTreeHelper.GetChildrenCount(menu) > 0, "ContextMenu has no template");
+        Assert.True(VisualTreeHelper.GetChildrenCount(menuItem) > 0, "MenuItem has no template");
+        menu.IsOpen = false;
     });
 
     [WindowsOnlyFact]
