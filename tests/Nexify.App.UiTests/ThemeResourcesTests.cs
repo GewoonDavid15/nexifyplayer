@@ -92,11 +92,13 @@ public class ThemeResourcesTests
     {
         var res = AppResources();
         var host = new StackPanel { Resources = res };
+        var styled = new List<FrameworkElement>();
 
         void Add(FrameworkElement e, string styleKey)
         {
             e.SetResourceReference(FrameworkElement.StyleProperty, styleKey);
             host.Children.Add(e);
+            styled.Add(e);
         }
 
         Add(new Button { Content = "A" }, "Button.Accent");
@@ -109,7 +111,11 @@ public class ThemeResourcesTests
         var nav = new ListBox();
         nav.Items.Add(new ListBoxItem { Content = "Home", IsSelected = true });
         nav.Items.Add(new ListBoxItem { Content = "Settings" });
-        foreach (ListBoxItem item in nav.Items) item.SetResourceReference(FrameworkElement.StyleProperty, "ListBoxItem.Nav");
+        foreach (ListBoxItem item in nav.Items)
+        {
+            item.SetResourceReference(FrameworkElement.StyleProperty, "ListBoxItem.Nav");
+            styled.Add(item);
+        }
         host.Children.Add(nav);
         Add(new RadioButton { Content = "Dark", IsChecked = true }, "RadioButton.Segmented");
         var combo = new ComboBox { ItemsSource = new[] { "One", "Two" }, SelectedIndex = 0 };
@@ -122,10 +128,10 @@ public class ThemeResourcesTests
         host.Arrange(new Rect(0, 0, 800, 2000));
         host.UpdateLayout();
 
-        foreach (var child in host.Children.OfType<FrameworkElement>())
+        foreach (var element in styled)
         {
-            Assert.NotNull(child.Style);
-            if (child is Control c) Assert.True(VisualTreeHelper.GetChildrenCount(c) > 0, $"{c.GetType().Name} has no template");
+            Assert.True(element.Style is not null, $"{element.GetType().Name} did not get its style");
+            if (element is Control c) Assert.True(VisualTreeHelper.GetChildrenCount(c) > 0, $"{c.GetType().Name} has no template");
         }
         combo.IsDropDownOpen = true;
         combo.IsDropDownOpen = false;
